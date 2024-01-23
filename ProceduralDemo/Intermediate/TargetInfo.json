@@ -1,0 +1,14 @@
+{
+	"Targets": [
+		{
+			"Name": "ProceduralDemo",
+			"Path": "..\\Source\\ProceduralDemo.Target.cs",
+			"Type": "Game"
+		},
+		{
+			"Name": "ProceduralDemoEditor",
+			"Path": "..\\Source\\ProceduralDemoEditor.Target.cs",
+			"Type": "Editor"
+		}
+	]
+}
