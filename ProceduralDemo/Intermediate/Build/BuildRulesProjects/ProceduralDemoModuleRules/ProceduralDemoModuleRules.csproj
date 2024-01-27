@@ -17,6 +17,7 @@
   <ItemGroup>
   <Compile Include="..\..\..\..\Source\ProceduralDemo.Target.cs"><Link>Source\ProceduralDemo.Target.cs</Link></Compile>
   <Compile Include="..\..\..\..\Source\ProceduralDemoEditor.Target.cs"><Link>Source\ProceduralDemoEditor.Target.cs</Link></Compile>
+  <Compile Include="..\..\..\..\Source\ProceduralDemoEditor\ProceduralDemoEditor.build.cs"><Link>Source\ProceduralDemoEditor\ProceduralDemoEditor.build.cs</Link></Compile>
   <Compile Include="..\..\..\..\Source\ProceduralDemo\ProceduralDemo.Build.cs"><Link>Source\ProceduralDemo\ProceduralDemo.Build.cs</Link></Compile>
   </ItemGroup>
 </Project>

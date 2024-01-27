@@ -27,13 +27,31 @@
     <None Include="..\..\Config\DefaultInput.ini">
       <Filter>Config</Filter>
     </None>
+    <Filter Include="Source\ProceduralDemoEditor">
+      <UniqueIdentifier>{1DD07BDF-14C5-388D-B3FD-9D2EA0BA8B82}</UniqueIdentifier>
+    </Filter>
+    <None Include="..\..\Source\ProceduralDemoEditor\ProceduralDemoEditor.build.cs">
+      <Filter>Source\ProceduralDemoEditor</Filter>
+    </None>
+    <Filter Include="Source\ProceduralDemoEditor\Private">
+      <UniqueIdentifier>{79BFCCB6-1C77-39E6-A4A3-4540CB7B958B}</UniqueIdentifier>
+    </Filter>
+    <ClCompile Include="..\..\Source\ProceduralDemoEditor\Private\ProceduralWorldEditor.cpp">
+      <Filter>Source\ProceduralDemoEditor\Private</Filter>
+    </ClCompile>
+    <Filter Include="Source\ProceduralDemoEditor\Public">
+      <UniqueIdentifier>{B7407648-94AF-3D06-ABFF-62E4492128ED}</UniqueIdentifier>
+    </Filter>
+    <ClInclude Include="..\..\Source\ProceduralDemoEditor\Public\ProceduralWorldEditor.h">
+      <Filter>Source\ProceduralDemoEditor\Public</Filter>
+    </ClInclude>
     <Filter Include="Source\ProceduralDemo">
       <UniqueIdentifier>{65E8519C-B08F-3158-B5FB-61B182B3C35B}</UniqueIdentifier>
     </Filter>
-    <ClCompile Include="..\..\Source\ProceduralDemo\NoiseGeneratorComponent.cpp">
+    <ClCompile Include="..\..\Source\ProceduralDemo\MarchingCubesActor.cpp">
       <Filter>Source\ProceduralDemo</Filter>
     </ClCompile>
-    <ClInclude Include="..\..\Source\ProceduralDemo\NoiseGeneratorComponent.h">
+    <ClInclude Include="..\..\Source\ProceduralDemo\MarchingCubesActor.h">
       <Filter>Source\ProceduralDemo</Filter>
     </ClInclude>
     <None Include="..\..\Source\ProceduralDemo\ProceduralDemo.Build.cs">
@@ -43,12 +61,6 @@
       <Filter>Source\ProceduralDemo</Filter>
     </ClCompile>
     <ClInclude Include="..\..\Source\ProceduralDemo\ProceduralDemo.h">
-      <Filter>Source\ProceduralDemo</Filter>
-    </ClInclude>
-    <ClCompile Include="..\..\Source\ProceduralDemo\TerrainChunk.cpp">
-      <Filter>Source\ProceduralDemo</Filter>
-    </ClCompile>
-    <ClInclude Include="..\..\Source\ProceduralDemo\TerrainChunk.h">
       <Filter>Source\ProceduralDemo</Filter>
     </ClInclude>
   </ItemGroup>

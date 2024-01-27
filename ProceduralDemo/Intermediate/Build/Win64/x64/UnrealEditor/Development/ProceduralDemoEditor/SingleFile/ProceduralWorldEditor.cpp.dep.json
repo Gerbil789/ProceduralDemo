@@ -1,0 +1,13 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\users\\vojta\\source\\repos\\proceduraldemo\\proceduraldemo\\source\\proceduraldemoeditor\\private\\proceduralworldeditor.cpp",
+        "ProvidedModule": "",
+        "Includes": [
+            "c:\\users\\vojta\\source\\repos\\proceduraldemo\\proceduraldemo\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\proceduraldemoeditor\\definitions.proceduraldemoeditor.h",
+            "c:\\users\\vojta\\source\\repos\\proceduraldemo\\proceduraldemo\\intermediate\\build\\win64\\x64\\proceduraldemoeditor\\development\\unrealed\\shareddefinitions.unrealed.cpp20.inclorderunreal5_0.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}
