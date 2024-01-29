@@ -7,6 +7,8 @@
         "Includes": [
             "c:\\users\\vojta\\source\\repos\\proceduraldemo\\proceduraldemo\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\proceduraldemo\\definitions.proceduraldemo.h",
             "c:\\users\\vojta\\source\\repos\\proceduraldemo\\proceduraldemo\\source\\proceduraldemo\\marchingcubesactor.h",
+            "c:\\users\\vojta\\source\\repos\\proceduraldemo\\proceduraldemo\\source\\proceduraldemo\\debugsphereactor.h",
+            "c:\\users\\vojta\\source\\repos\\proceduraldemo\\proceduraldemo\\intermediate\\build\\win64\\unrealeditor\\inc\\proceduraldemo\\uht\\debugsphereactor.generated.h",
             "c:\\users\\vojta\\source\\repos\\proceduraldemo\\proceduraldemo\\intermediate\\build\\win64\\unrealeditor\\inc\\proceduraldemo\\uht\\marchingcubesactor.generated.h"
         ],
         "ImportedModules": [],

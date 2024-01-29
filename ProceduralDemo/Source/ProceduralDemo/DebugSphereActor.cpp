@@ -1,11 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "DebugSphereActor.h"
 #include "Components/SphereComponent.h"
 #include "Components/TextRenderComponent.h"
 
-// Sets default values
 ADebugSphereActor::ADebugSphereActor()
 {
 	PrimaryActorTick.bCanEverTick = true;
