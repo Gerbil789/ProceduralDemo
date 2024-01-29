@@ -48,6 +48,12 @@
     <Filter Include="Source\ProceduralDemo">
       <UniqueIdentifier>{65E8519C-B08F-3158-B5FB-61B182B3C35B}</UniqueIdentifier>
     </Filter>
+    <ClCompile Include="..\..\Source\ProceduralDemo\DebugSphereActor.cpp">
+      <Filter>Source\ProceduralDemo</Filter>
+    </ClCompile>
+    <ClInclude Include="..\..\Source\ProceduralDemo\DebugSphereActor.h">
+      <Filter>Source\ProceduralDemo</Filter>
+    </ClInclude>
     <ClCompile Include="..\..\Source\ProceduralDemo\MarchingCubesActor.cpp">
       <Filter>Source\ProceduralDemo</Filter>
     </ClCompile>

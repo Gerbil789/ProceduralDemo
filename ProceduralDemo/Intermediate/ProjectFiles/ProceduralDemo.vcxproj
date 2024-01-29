@@ -346,6 +346,12 @@
       <AdditionalOptions>$(ClCompile_AdditionalOptions_1)</AdditionalOptions>
     </ClCompile>
     <ClInclude Include="..\..\Source\ProceduralDemoEditor\Public\ProceduralWorldEditor.h"/>
+    <ClCompile Include="..\..\Source\ProceduralDemo\DebugSphereActor.cpp">
+      <AdditionalIncludeDirectories>$(ClCompile_AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>$(ClCompile_ForcedIncludeFiles)</ForcedIncludeFiles>
+      <AdditionalOptions>$(ClCompile_AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ClInclude Include="..\..\Source\ProceduralDemo\DebugSphereActor.h"/>
     <ClCompile Include="..\..\Source\ProceduralDemo\MarchingCubesActor.cpp">
       <AdditionalIncludeDirectories>$(ClCompile_AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(ClCompile_ForcedIncludeFiles)</ForcedIncludeFiles>

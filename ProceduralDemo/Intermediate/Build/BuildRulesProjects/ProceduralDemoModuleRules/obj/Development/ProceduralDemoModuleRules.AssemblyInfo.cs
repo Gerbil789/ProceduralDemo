@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ProceduralDemoModuleRules")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Development")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cc9d378f3325fd31183afe8904f48cb6664509b7")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
 [assembly: System.Reflection.AssemblyProductAttribute("ProceduralDemoModuleRules")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ProceduralDemoModuleRules")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

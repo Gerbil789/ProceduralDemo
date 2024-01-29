@@ -3,8 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "DebugSphereActor.h"
 #include "GameFramework/Actor.h"
 #include "MarchingCubesActor.generated.h"
+
 
 UCLASS()
 class PROCEDURALDEMO_API AMarchingCubesActor : public AActor
@@ -14,16 +16,19 @@ class PROCEDURALDEMO_API AMarchingCubesActor : public AActor
 public:	
 	AMarchingCubesActor();
 
-	UPROPERTY(EditAnywhere, Category = "Mesh")
-	class UStaticMesh* CustomMesh;
+	UPROPERTY(EditAnywhere, Category = "MarchingCubes")
+	TSubclassOf<ADebugSphereActor> DebugSphereActorBlueprint;
 
 	UFUNCTION(BlueprintCallable, Category = "MarchingCubes")
-	void GenerateMesh();
+	void GenerateMesh(const FIntVector& size);
 
 	UFUNCTION(BlueprintCallable, Category = "MarchingCubes")
 	void CleanUpMesh();
 
 private:
-	UStaticMeshComponent* SphereMesh;
+	TMap<FVector, float> Points;
+	TArray<AActor*> DebugSpheres;
 
+	void GeneratePoints(const FIntVector& size, float min = 0.0f, float max = 1.0f);
+	void SpawnDebugSphere(const FVector& location, const float& value);
 };
