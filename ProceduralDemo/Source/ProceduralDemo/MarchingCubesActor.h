@@ -11,7 +11,6 @@ struct Cube
 {
 	FVector Points[8];
 	float Values[8];
-	int32 CubeIndex;
 };
 
 
@@ -45,7 +44,7 @@ private:
 	FVector InterpolateVertex(const FVector& pointA, const FVector& pointB, const float& valueA, const float& valueB);
 	FVector GetCornerOffset(int32 CornerIndex);
 
-	void GenerateCubeMesh(const Cube& cube, const bool& lerp);
+	void GenerateCubeMesh(const Cube& cube, const int32& cubeIndex, const bool& lerp);
 	UProceduralMeshComponent* ProceduralMeshComponent = nullptr;
 
 	TArray<FVector> AllVertices;
