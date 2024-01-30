@@ -1,57 +1,47 @@
 #include "MarchingCubesActor.h"
 #include "ProceduralMeshComponent.h"
-
-// optimization
-// vertices are duplicating for each cube
-// use mutlithreading
-// use chunks for infinite world
+#include "Math/UnrealMathUtility.h"
 
 AMarchingCubesActor::AMarchingCubesActor()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
-	//ProceduralMeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ProceduralMeshComponent"));
-	//ProceduralMeshComponent->SetupAttachment(GetRootComponent());
-
-
+	ProceduralMeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ProceduralMeshComponent"));
+	ProceduralMeshComponent->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 }
 
-
-void AMarchingCubesActor::GenerateMesh(const FIntVector& size, const float& surfaceLevel)
+void AMarchingCubesActor::GenerateMesh(const FIntVector& gridSize, const float& surfaceLevel, const float& offset, const bool& debug)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Generate started"));
 	SurfaceLevel = surfaceLevel;
+	Offset = offset;
+	Debug = debug;
 	CleanUpMesh();
 
+	AllVertices.Empty();
+	AllTriangles.Empty();
+	
 
-	ProceduralMeshComponent = this->FindComponentByClass<UProceduralMeshComponent>();
 	if (!ProceduralMeshComponent)
 	{
 		UE_LOG(LogTemp, Error, TEXT("ProceduralMeshComponent not found"));
 		return;
 	}
-	ProceduralMeshComponent->ClearAllMeshSections();
 
-
-	GeneratePoints(size, 0.0f, 1.0f);
+	GeneratePoints(gridSize, 0.0f, 1.0f);
 
 	//Spawn Debug Spheres
-	for (const auto& point : Points) {
-		FVector pointLocation = point.Key;
-		float pointColorFactor = point.Value;
-		SpawnDebugSphere(point.Key, point.Value);
+	if (Debug) {
+		SpawnDebugSpheres();
 	}
 
-	for (int32 X = 0; X < size.X - 1; ++X) {
-		for (int32 Y = 0; Y < size.Y - 1; ++Y) {
-			for (int32 Z = 0; Z < size.Z - 1; ++Z) {
-
+	for (int32 X = 0; X < gridSize.X - 1; ++X) {
+		for (int32 Y = 0; Y < gridSize.Y - 1; ++Y) {
+			for (int32 Z = 0; Z < gridSize.Z - 1; ++Z) {
 				Cube cube;
 				FVector CubeOrigin(X, Y, Z);
-				UE_LOG(LogTemp, Error, TEXT("Cube %s"), *CubeOrigin.ToString());
 
 				// Determine the scalar values at the cube corners
-
 				for (int32 i = 0; i < 8; ++i) {
 					FVector Corner = CubeOrigin + GetCornerOffset(i);
 					if (!Points.Contains(Corner)) {
@@ -80,6 +70,36 @@ void AMarchingCubesActor::GenerateMesh(const FIntVector& size, const float& surf
 	}
 
 
+	//TArray<FString> VectorStringArray;
+	//for (const FVector& Element : AllVertices)
+	//{
+	//	VectorStringArray.Add(FString::Printf(TEXT("(%.2f, %.2f, %.2f)"), Element.X, Element.Y, Element.Z));
+	//}
+
+	//// Convert the int32 array elements to strings
+	//TArray<FString> IntStringArray;
+	//for (int32 Element : AllTriangles)
+	//{
+	//	IntStringArray.Add(FString::Printf(TEXT("%d"), Element));
+	//}
+
+	//// Join the array elements into single strings
+	//FString JoinedVectorString = FString::Join(VectorStringArray, TEXT(", "));
+	//FString JoinedIntString = FString::Join(IntStringArray, TEXT(", "));
+
+	//UE_LOG(LogTemp, Warning, TEXT("Vertices: %s"), *JoinedVectorString);
+	//UE_LOG(LogTemp, Warning, TEXT("Triangles: %s"), *JoinedIntString);
+
+	ProceduralMeshComponent->CreateMeshSection(0, AllVertices, AllTriangles, TArray<FVector>(), TArray<FVector2D>(), TArray<FColor>(), TArray<FProcMeshTangent>(), false);
+
+	if (!MeshMaterial)
+	{
+		UE_LOG(LogTemp, Error, TEXT("MeshMaterial not found"));
+		return;
+	}
+
+	ProceduralMeshComponent->SetMaterial(0, MeshMaterial);
+
 	UE_LOG(LogTemp, Warning, TEXT("Generate finished"));
 }
 
@@ -96,102 +116,42 @@ FVector AMarchingCubesActor::GetCornerOffset(int32 CornerIndex) {
 
 void AMarchingCubesActor::GenerateCubeMesh(const Cube& cube)
 {
-	UE_LOG(LogTemp, Warning, TEXT("GenerateCubeMesh started"));
-
 	TArray<FVector> Vertices;
 	Vertices.SetNum(12);
-	TArray<int32> Triangles;
+
+	for (int i = 0; TriTable[cube.CubeIndex][i] != -1; i += 3) {
+		AllTriangles.Add(AllVertices.Num() + TriTable[cube.CubeIndex][i]);
+		AllTriangles.Add(AllVertices.Num() + TriTable[cube.CubeIndex][i + 1]);
+		AllTriangles.Add(AllVertices.Num() + TriTable[cube.CubeIndex][i + 2]);
+	}
 
 	//calculate midpoints
 	if (EdgeTable[cube.CubeIndex] & 1)
-		Vertices[0] = FVector(cube.Points[0] + cube.Points[1]) * 0.5f * 100;
+		Vertices[0] = (FVector(cube.Points[0] + cube.Points[1]) * 0.5f * Offset);
 	if (EdgeTable[cube.CubeIndex] & 2)
-		Vertices[1] = FVector(cube.Points[1] + cube.Points[2]) * 0.5f * 100;
+		Vertices[1] = (FVector(cube.Points[1] + cube.Points[2]) * 0.5f * Offset);
 	if (EdgeTable[cube.CubeIndex] & 4)
-		Vertices[2] = FVector(cube.Points[2] + cube.Points[3]) * 0.5f * 100;
+		Vertices[2] = (FVector(cube.Points[2] + cube.Points[3]) * 0.5f * Offset);
 	if (EdgeTable[cube.CubeIndex] & 8)
-		Vertices[3] = FVector(cube.Points[3] + cube.Points[0]) * 0.5f * 100;
+		Vertices[3] = (FVector(cube.Points[3] + cube.Points[0]) * 0.5f * Offset);
 	if (EdgeTable[cube.CubeIndex] & 16)
-		Vertices[4] = FVector(cube.Points[4] + cube.Points[5]) * 0.5f * 100;
+		Vertices[4] = (FVector(cube.Points[4] + cube.Points[5]) * 0.5f * Offset);
 	if (EdgeTable[cube.CubeIndex] & 32)
-		Vertices[5] = FVector(cube.Points[5] + cube.Points[6]) * 0.5f * 100;
+		Vertices[5] = (FVector(cube.Points[5] + cube.Points[6]) * 0.5f * Offset);
 	if (EdgeTable[cube.CubeIndex] & 64)
-		Vertices[6] = FVector(cube.Points[6] + cube.Points[7]) * 0.5f * 100;
+		Vertices[6] = (FVector(cube.Points[6] + cube.Points[7]) * 0.5f * Offset);
 	if (EdgeTable[cube.CubeIndex] & 128)
-		Vertices[7] = FVector(cube.Points[7] + cube.Points[4]) * 0.5f * 100;
+		Vertices[7] = (FVector(cube.Points[7] + cube.Points[4]) * 0.5f * Offset);
 	if (EdgeTable[cube.CubeIndex] & 256)
-		Vertices[8] = FVector(cube.Points[0] + cube.Points[4]) * 0.5f * 100;
+		Vertices[8] = (FVector(cube.Points[0] + cube.Points[4]) * 0.5f * Offset);
 	if (EdgeTable[cube.CubeIndex] & 512)
-		Vertices[9] = FVector(cube.Points[1] + cube.Points[5]) * 0.5f * 100;
+		Vertices[9] = (FVector(cube.Points[1] + cube.Points[5]) * 0.5f * Offset);
 	if (EdgeTable[cube.CubeIndex] & 1024)
-		Vertices[10] = FVector(cube.Points[2] + cube.Points[6]) * 0.5f * 100;
+		Vertices[10] = (FVector(cube.Points[2] + cube.Points[6]) * 0.5f * Offset);
 	if (EdgeTable[cube.CubeIndex] & 2048)
-		Vertices[11] = FVector(cube.Points[3] + cube.Points[7]) * 0.5f * 100;
+		Vertices[11] = (FVector(cube.Points[3] + cube.Points[7]) * 0.5f * Offset);
 
-	for (int i = 0; TriTable[cube.CubeIndex][i] != -1; i += 3) {
-		Triangles.Add(TriTable[cube.CubeIndex][i]);
-		Triangles.Add(TriTable[cube.CubeIndex][i + 1]);
-		Triangles.Add(TriTable[cube.CubeIndex][i + 2]);
-	}
-
-
-
-	TArray<FString> VectorStringArray;
-	for (const FVector& Element : Vertices)
-	{
-		VectorStringArray.Add(FString::Printf(TEXT("(%.2f, %.2f, %.2f)"), Element.X, Element.Y, Element.Z));
-	}
-
-	// Convert the int32 array elements to strings
-	TArray<FString> IntStringArray;
-	for (int32 Element : Triangles)
-	{
-		IntStringArray.Add(FString::Printf(TEXT("%d"), Element));
-	}
-
-	// Join the array elements into single strings
-	FString JoinedVectorString = FString::Join(VectorStringArray, TEXT(", "));
-	FString JoinedIntString = FString::Join(IntStringArray, TEXT(", "));
-
-	// Print the results in UE log
-	UE_LOG(LogTemp, Warning, TEXT("Vertices: %s"), *JoinedVectorString);
-	UE_LOG(LogTemp, Warning, TEXT("triangles: %s"), *JoinedIntString);
-
-
-	ProceduralMeshComponent->CreateMeshSection(MeshSectionIndex, Vertices, Triangles, TArray<FVector>(), TArray<FVector2D>(), TArray<FColor>(), TArray<FProcMeshTangent>(), false);
-
-	if (MeshMaterial)
-	{
-		// Create a dynamic material instance from the assigned material
-		UMaterialInstanceDynamic* DynamicMaterialInstance = UMaterialInstanceDynamic::Create(MeshMaterial, this);
-
-		// Check if the dynamic material instance is valid
-		if (DynamicMaterialInstance)
-		{
-			// Set the dynamic material instance on the procedural mesh component
-			ProceduralMeshComponent->SetMaterial(MeshSectionIndex, DynamicMaterialInstance);
-			FLinearColor RandomColor = FLinearColor::MakeRandomColor();
-			DynamicMaterialInstance->SetVectorParameterValue(TEXT("Color"), RandomColor);
-
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Failed to create dynamic material instance!"));
-		}
-	}
-
-	MeshSectionIndex++;
-
-
-
-	// Clear any existing mesh data
-	//ProceduralMeshComponent->ClearAllMeshSections();
-
-	// Create a new mesh section
-	//ProceduralMeshComponent->CreateMeshSection(0, Vertices, Triangles, TArray<FVector>(), TArray<FVector2D>(), TArray<FColor>(), TArray<FProcMeshTangent>(), false);
-
-	UE_LOG(LogTemp, Warning, TEXT("GenerateCubeMesh finished"));
-
+	AllVertices.Append(Vertices);
 }
 
 void AMarchingCubesActor::CleanUpMesh()
@@ -199,7 +159,6 @@ void AMarchingCubesActor::CleanUpMesh()
 	UE_LOG(LogTemp, Warning, TEXT("Cleanup started"));
 
 	Points.Empty();
-	Points.Compact(); // Compact() is not necessary, but it's good practice 
 
 	TArray<AActor*> ChildActors;
 	this->GetAttachedActors(ChildActors);
@@ -210,7 +169,10 @@ void AMarchingCubesActor::CleanUpMesh()
 		}
 	}
 
-	ProceduralMeshComponent = this->FindComponentByClass<UProceduralMeshComponent>();
+	//if (!ProceduralMeshComponent)
+	//{
+	//	ProceduralMeshComponent = this->FindComponentByClass<UProceduralMeshComponent>();
+	//}
 	if (!ProceduralMeshComponent)
 	{
 		UE_LOG(LogTemp, Error, TEXT("ProceduralMeshComponent not found"));
@@ -221,29 +183,39 @@ void AMarchingCubesActor::CleanUpMesh()
 	UE_LOG(LogTemp, Warning, TEXT("Cleanup finished"));
 }
 
-void AMarchingCubesActor::GeneratePoints(const FIntVector& size, float min, float max)
+void AMarchingCubesActor::GeneratePoints(const FIntVector& gridSize, float min, float max)
 {
 	UE_LOG(LogTemp, Warning, TEXT("GeneratePoints started"));
 
-	if (size.X <= 0 || size.Y <= 0 || size.Z <= 0)
+	if (gridSize.X <= 0 || gridSize.Y <= 0 || gridSize.Z <= 0)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Invalid size"));
 		return;
 	}
-
-	Points.Empty();
-	for (int32 z = 0; z < size.Z; z++)
-	{
-		for (int32 y = 0; y < size.Y; y++)
-		{
-			for (int32 x = 0; x < size.X; x++)
+	for (int32 X = 0; X < gridSize.X; X++) {
+		for (int32 Y = 0; Y < gridSize.Y; Y++) {
+			for (int32 Z = 0; Z < gridSize.Z; Z++)
 			{
-				Points.Add(FVector(x, y, z), FMath::FRandRange(min, max));
+				//Points.Add(FVector(x, y, z), FMath::FRandRange(min, max));
+				FVector GridPoint(X, Y, Z);
+				float PerlinNoiseValue = FMath::PerlinNoise3D(GridPoint / 25.0f);
+				float RemappedValue = FMath::GetMappedRangeValueClamped(FVector2D(-1.0f, 1.0f), FVector2D(min, max), PerlinNoiseValue);
+
+				Points.Add(GridPoint, RemappedValue);
 			}
 		}
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("%d points generated"), Points.Num());
+}
+
+void AMarchingCubesActor::SpawnDebugSpheres()
+{
+	for (const auto& point : Points) {
+		FVector pointLocation = point.Key;
+		float pointColorFactor = point.Value;
+		SpawnDebugSphere(point.Key, point.Value);
+	}
 }
 
 void AMarchingCubesActor::SpawnDebugSphere(const FVector& location, const float& value)
@@ -262,7 +234,7 @@ void AMarchingCubesActor::SpawnDebugSphere(const FVector& location, const float&
 		return;
 	}
 
-	DebugSphereInstance->SetActorLocation(location * 100);
+	DebugSphereInstance->SetActorLocation(location * Offset);
 	DebugSphereInstance->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
 	DebugSphereInstance->SetValue(value);
 }

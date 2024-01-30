@@ -15,6 +15,7 @@ struct Cube
 };
 
 
+
 UCLASS()
 class PROCEDURALDEMO_API AMarchingCubesActor : public AActor
 {   
@@ -30,7 +31,7 @@ public:
 	UMaterialInterface* MeshMaterial;
 
 	UFUNCTION(BlueprintCallable, Category = "MarchingCubes")
-	void GenerateMesh(const FIntVector& size, const float& surfaceLevel = 0.5f);
+	void GenerateMesh(const FIntVector& gridSize, const float& surfaceLevel = 0.5f, const float& offset = 100.0f, const bool& debug = false);
 
 	UFUNCTION(BlueprintCallable, Category = "MarchingCubes")
 	void CleanUpMesh();
@@ -38,13 +39,19 @@ public:
 private:
 	TMap<FVector, float> Points;
 	float SurfaceLevel = 0.5f;
-	int32 MeshSectionIndex = 0;
-	void GeneratePoints(const FIntVector& size, float min = 0.0f, float max = 1.0f);
+	void GeneratePoints(const FIntVector& gridSize, float min = 0.0f, float max = 1.0f);
+	void SpawnDebugSpheres();
 	void SpawnDebugSphere(const FVector& location, const float& value);
 	FVector GetCornerOffset(int32 CornerIndex);
 
 	void GenerateCubeMesh(const Cube& cube);
 	UProceduralMeshComponent* ProceduralMeshComponent = nullptr;
+
+	TArray<FVector> AllVertices;
+	TArray<int32> AllTriangles;
+
+	float Offset = 100.0f;
+	bool Debug = false;
 
 
 	int EdgeTable[256] = {

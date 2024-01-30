@@ -43,8 +43,13 @@ void ADebugSphereActor::SetValue(const float& val)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("TextRenderComponent not found in spawned actor."));
 	}
-	FString FormattedText = FString::Printf(TEXT("%.2f"), this->value);
+
+	FVector ActorLocation = this->GetActorLocation();
+	
+
+	FString FormattedText = FString::Printf(TEXT("%.2f\n[%d,%d,%d]"), this->value, FMath::RoundToInt(ActorLocation.X), FMath::RoundToInt(ActorLocation.Y), FMath::RoundToInt(ActorLocation.Z));
 	TextRenderComponent->SetText(FText::FromString(FormattedText));
+
 }
 
 
