@@ -1,8 +1,0 @@
-{
-	"BuildId": "27405482",
-	"Modules": 
-	{
-		"ProceduralDemo": "UnrealEditor-ProceduralDemo.dll",
-		"ProceduralDemoEditor": "UnrealEditor-ProceduralDemoEditor.dll"
-	}
-}

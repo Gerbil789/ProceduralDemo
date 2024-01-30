@@ -31,7 +31,7 @@ public:
 	UMaterialInterface* MeshMaterial;
 
 	UFUNCTION(BlueprintCallable, Category = "MarchingCubes")
-	void GenerateMesh(const FIntVector& gridSize, const float& surfaceLevel = 0.5f, const float& offset = 100.0f, const bool& debug = false);
+	void GenerateMesh(const FIntVector& gridSize, const float& surfaceLevel = 0.5f, const float& offset = 100.0f, const bool& lerp = false, const bool& debug = false);
 
 	UFUNCTION(BlueprintCallable, Category = "MarchingCubes")
 	void CleanUpMesh();
@@ -42,13 +42,15 @@ private:
 	void GeneratePoints(const FIntVector& gridSize, float min = 0.0f, float max = 1.0f);
 	void SpawnDebugSpheres();
 	void SpawnDebugSphere(const FVector& location, const float& value);
+	FVector InterpolateVertex(const FVector& pointA, const FVector& pointB, const float& valueA, const float& valueB);
 	FVector GetCornerOffset(int32 CornerIndex);
 
-	void GenerateCubeMesh(const Cube& cube);
+	void GenerateCubeMesh(const Cube& cube, const bool& lerp);
 	UProceduralMeshComponent* ProceduralMeshComponent = nullptr;
 
 	TArray<FVector> AllVertices;
 	TArray<int32> AllTriangles;
+
 
 	float Offset = 100.0f;
 	bool Debug = false;

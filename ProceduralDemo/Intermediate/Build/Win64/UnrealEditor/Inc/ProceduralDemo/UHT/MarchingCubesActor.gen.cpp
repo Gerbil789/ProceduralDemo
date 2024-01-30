@@ -30,10 +30,11 @@ void EmptyLinkFunctionForGeneratedCodeMarchingCubesActor() {}
 		P_GET_STRUCT_REF(FIntVector,Z_Param_Out_gridSize);
 		P_GET_PROPERTY_REF(FFloatProperty,Z_Param_Out_surfaceLevel);
 		P_GET_PROPERTY_REF(FFloatProperty,Z_Param_Out_offset);
+		P_GET_UBOOL_REF(Z_Param_Out_lerp);
 		P_GET_UBOOL_REF(Z_Param_Out_debug);
 		P_FINISH;
 		P_NATIVE_BEGIN;
-		P_THIS->GenerateMesh(Z_Param_Out_gridSize,Z_Param_Out_surfaceLevel,Z_Param_Out_offset,Z_Param_Out_debug);
+		P_THIS->GenerateMesh(Z_Param_Out_gridSize,Z_Param_Out_surfaceLevel,Z_Param_Out_offset,Z_Param_Out_lerp,Z_Param_Out_debug);
 		P_NATIVE_END;
 	}
 	void AMarchingCubesActor::StaticRegisterNativesAMarchingCubesActor()
@@ -75,6 +76,7 @@ void EmptyLinkFunctionForGeneratedCodeMarchingCubesActor() {}
 			FIntVector gridSize;
 			float surfaceLevel;
 			float offset;
+			bool lerp;
 			bool debug;
 		};
 #if WITH_METADATA
@@ -89,6 +91,11 @@ void EmptyLinkFunctionForGeneratedCodeMarchingCubesActor() {}
 		static const UECodeGen_Private::FMetaDataPairParam NewProp_offset_MetaData[];
 #endif
 		static const UECodeGen_Private::FFloatPropertyParams NewProp_offset;
+#if WITH_METADATA
+		static const UECodeGen_Private::FMetaDataPairParam NewProp_lerp_MetaData[];
+#endif
+		static void NewProp_lerp_SetBit(void* Obj);
+		static const UECodeGen_Private::FBoolPropertyParams NewProp_lerp;
 #if WITH_METADATA
 		static const UECodeGen_Private::FMetaDataPairParam NewProp_debug_MetaData[];
 #endif
@@ -119,6 +126,16 @@ void EmptyLinkFunctionForGeneratedCodeMarchingCubesActor() {}
 #endif
 	const UECodeGen_Private::FFloatPropertyParams Z_Construct_UFunction_AMarchingCubesActor_GenerateMesh_Statics::NewProp_offset = { "offset", nullptr, (EPropertyFlags)0x0010000008000182, UECodeGen_Private::EPropertyGenFlags::Float, RF_Public|RF_Transient|RF_MarkAsNative, nullptr, nullptr, 1, STRUCT_OFFSET(MarchingCubesActor_eventGenerateMesh_Parms, offset), METADATA_PARAMS(UE_ARRAY_COUNT(Z_Construct_UFunction_AMarchingCubesActor_GenerateMesh_Statics::NewProp_offset_MetaData), Z_Construct_UFunction_AMarchingCubesActor_GenerateMesh_Statics::NewProp_offset_MetaData) };
 #if WITH_METADATA
+	const UECodeGen_Private::FMetaDataPairParam Z_Construct_UFunction_AMarchingCubesActor_GenerateMesh_Statics::NewProp_lerp_MetaData[] = {
+		{ "NativeConst", "" },
+	};
+#endif
+	void Z_Construct_UFunction_AMarchingCubesActor_GenerateMesh_Statics::NewProp_lerp_SetBit(void* Obj)
+	{
+		((MarchingCubesActor_eventGenerateMesh_Parms*)Obj)->lerp = 1;
+	}
+	const UECodeGen_Private::FBoolPropertyParams Z_Construct_UFunction_AMarchingCubesActor_GenerateMesh_Statics::NewProp_lerp = { "lerp", nullptr, (EPropertyFlags)0x0010000008000182, UECodeGen_Private::EPropertyGenFlags::Bool | UECodeGen_Private::EPropertyGenFlags::NativeBool, RF_Public|RF_Transient|RF_MarkAsNative, nullptr, nullptr, 1, sizeof(bool), sizeof(MarchingCubesActor_eventGenerateMesh_Parms), &Z_Construct_UFunction_AMarchingCubesActor_GenerateMesh_Statics::NewProp_lerp_SetBit, METADATA_PARAMS(UE_ARRAY_COUNT(Z_Construct_UFunction_AMarchingCubesActor_GenerateMesh_Statics::NewProp_lerp_MetaData), Z_Construct_UFunction_AMarchingCubesActor_GenerateMesh_Statics::NewProp_lerp_MetaData) };
+#if WITH_METADATA
 	const UECodeGen_Private::FMetaDataPairParam Z_Construct_UFunction_AMarchingCubesActor_GenerateMesh_Statics::NewProp_debug_MetaData[] = {
 		{ "NativeConst", "" },
 	};
@@ -132,12 +149,14 @@ void EmptyLinkFunctionForGeneratedCodeMarchingCubesActor() {}
 		(const UECodeGen_Private::FPropertyParamsBase*)&Z_Construct_UFunction_AMarchingCubesActor_GenerateMesh_Statics::NewProp_gridSize,
 		(const UECodeGen_Private::FPropertyParamsBase*)&Z_Construct_UFunction_AMarchingCubesActor_GenerateMesh_Statics::NewProp_surfaceLevel,
 		(const UECodeGen_Private::FPropertyParamsBase*)&Z_Construct_UFunction_AMarchingCubesActor_GenerateMesh_Statics::NewProp_offset,
+		(const UECodeGen_Private::FPropertyParamsBase*)&Z_Construct_UFunction_AMarchingCubesActor_GenerateMesh_Statics::NewProp_lerp,
 		(const UECodeGen_Private::FPropertyParamsBase*)&Z_Construct_UFunction_AMarchingCubesActor_GenerateMesh_Statics::NewProp_debug,
 	};
 #if WITH_METADATA
 	const UECodeGen_Private::FMetaDataPairParam Z_Construct_UFunction_AMarchingCubesActor_GenerateMesh_Statics::Function_MetaDataParams[] = {
 		{ "Category", "MarchingCubes" },
 		{ "CPP_Default_debug", "false" },
+		{ "CPP_Default_lerp", "false" },
 		{ "CPP_Default_offset", "100.000000" },
 		{ "CPP_Default_surfaceLevel", "0.500000" },
 		{ "ModuleRelativePath", "MarchingCubesActor.h" },
@@ -186,7 +205,7 @@ void EmptyLinkFunctionForGeneratedCodeMarchingCubesActor() {}
 	static_assert(UE_ARRAY_COUNT(Z_Construct_UClass_AMarchingCubesActor_Statics::DependentSingletons) < 16);
 	const FClassFunctionLinkInfo Z_Construct_UClass_AMarchingCubesActor_Statics::FuncInfo[] = {
 		{ &Z_Construct_UFunction_AMarchingCubesActor_CleanUpMesh, "CleanUpMesh" }, // 3836338938
-		{ &Z_Construct_UFunction_AMarchingCubesActor_GenerateMesh, "GenerateMesh" }, // 418948999
+		{ &Z_Construct_UFunction_AMarchingCubesActor_GenerateMesh, "GenerateMesh" }, // 2704639193
 	};
 	static_assert(UE_ARRAY_COUNT(Z_Construct_UClass_AMarchingCubesActor_Statics::FuncInfo) < 2048);
 #if WITH_METADATA
@@ -251,9 +270,9 @@ void EmptyLinkFunctionForGeneratedCodeMarchingCubesActor() {}
 		static const FClassRegisterCompiledInInfo ClassInfo[];
 	};
 	const FClassRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Users_vojta_source_repos_ProceduralDemo_ProceduralDemo_Source_ProceduralDemo_MarchingCubesActor_h_Statics::ClassInfo[] = {
-		{ Z_Construct_UClass_AMarchingCubesActor, AMarchingCubesActor::StaticClass, TEXT("AMarchingCubesActor"), &Z_Registration_Info_UClass_AMarchingCubesActor, CONSTRUCT_RELOAD_VERSION_INFO(FClassReloadVersionInfo, sizeof(AMarchingCubesActor), 3852821678U) },
+		{ Z_Construct_UClass_AMarchingCubesActor, AMarchingCubesActor::StaticClass, TEXT("AMarchingCubesActor"), &Z_Registration_Info_UClass_AMarchingCubesActor, CONSTRUCT_RELOAD_VERSION_INFO(FClassReloadVersionInfo, sizeof(AMarchingCubesActor), 2956757527U) },
 	};
-	static FRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Users_vojta_source_repos_ProceduralDemo_ProceduralDemo_Source_ProceduralDemo_MarchingCubesActor_h_999324824(TEXT("/Script/ProceduralDemo"),
+	static FRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Users_vojta_source_repos_ProceduralDemo_ProceduralDemo_Source_ProceduralDemo_MarchingCubesActor_h_2438968310(TEXT("/Script/ProceduralDemo"),
 		Z_CompiledInDeferFile_FID_Users_vojta_source_repos_ProceduralDemo_ProceduralDemo_Source_ProceduralDemo_MarchingCubesActor_h_Statics::ClassInfo, UE_ARRAY_COUNT(Z_CompiledInDeferFile_FID_Users_vojta_source_repos_ProceduralDemo_ProceduralDemo_Source_ProceduralDemo_MarchingCubesActor_h_Statics::ClassInfo),
 		nullptr, 0,
 		nullptr, 0);

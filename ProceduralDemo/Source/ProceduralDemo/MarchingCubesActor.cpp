@@ -10,7 +10,7 @@ AMarchingCubesActor::AMarchingCubesActor()
 	ProceduralMeshComponent->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 }
 
-void AMarchingCubesActor::GenerateMesh(const FIntVector& gridSize, const float& surfaceLevel, const float& offset, const bool& debug)
+void AMarchingCubesActor::GenerateMesh(const FIntVector& gridSize, const float& surfaceLevel, const float& offset, const bool& lerp, const bool& debug)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Generate started"));
 	SurfaceLevel = surfaceLevel;
@@ -20,7 +20,7 @@ void AMarchingCubesActor::GenerateMesh(const FIntVector& gridSize, const float& 
 
 	AllVertices.Empty();
 	AllTriangles.Empty();
-	
+
 
 	if (!ProceduralMeshComponent)
 	{
@@ -64,7 +64,7 @@ void AMarchingCubesActor::GenerateMesh(const FIntVector& gridSize, const float& 
 					continue;
 				}
 
-				GenerateCubeMesh(cube);
+				GenerateCubeMesh(cube, lerp);
 			}
 		}
 	}
@@ -114,7 +114,7 @@ FVector AMarchingCubesActor::GetCornerOffset(int32 CornerIndex) {
 	return CornerOffsets[CornerIndex];
 }
 
-void AMarchingCubesActor::GenerateCubeMesh(const Cube& cube)
+void AMarchingCubesActor::GenerateCubeMesh(const Cube& cube, const bool& lerp)
 {
 	TArray<FVector> Vertices;
 	Vertices.SetNum(12);
@@ -126,30 +126,59 @@ void AMarchingCubesActor::GenerateCubeMesh(const Cube& cube)
 	}
 
 	//calculate midpoints
-	if (EdgeTable[cube.CubeIndex] & 1)
-		Vertices[0] = (FVector(cube.Points[0] + cube.Points[1]) * 0.5f * Offset);
-	if (EdgeTable[cube.CubeIndex] & 2)
-		Vertices[1] = (FVector(cube.Points[1] + cube.Points[2]) * 0.5f * Offset);
-	if (EdgeTable[cube.CubeIndex] & 4)
-		Vertices[2] = (FVector(cube.Points[2] + cube.Points[3]) * 0.5f * Offset);
-	if (EdgeTable[cube.CubeIndex] & 8)
-		Vertices[3] = (FVector(cube.Points[3] + cube.Points[0]) * 0.5f * Offset);
-	if (EdgeTable[cube.CubeIndex] & 16)
-		Vertices[4] = (FVector(cube.Points[4] + cube.Points[5]) * 0.5f * Offset);
-	if (EdgeTable[cube.CubeIndex] & 32)
-		Vertices[5] = (FVector(cube.Points[5] + cube.Points[6]) * 0.5f * Offset);
-	if (EdgeTable[cube.CubeIndex] & 64)
-		Vertices[6] = (FVector(cube.Points[6] + cube.Points[7]) * 0.5f * Offset);
-	if (EdgeTable[cube.CubeIndex] & 128)
-		Vertices[7] = (FVector(cube.Points[7] + cube.Points[4]) * 0.5f * Offset);
-	if (EdgeTable[cube.CubeIndex] & 256)
-		Vertices[8] = (FVector(cube.Points[0] + cube.Points[4]) * 0.5f * Offset);
-	if (EdgeTable[cube.CubeIndex] & 512)
-		Vertices[9] = (FVector(cube.Points[1] + cube.Points[5]) * 0.5f * Offset);
-	if (EdgeTable[cube.CubeIndex] & 1024)
-		Vertices[10] = (FVector(cube.Points[2] + cube.Points[6]) * 0.5f * Offset);
-	if (EdgeTable[cube.CubeIndex] & 2048)
-		Vertices[11] = (FVector(cube.Points[3] + cube.Points[7]) * 0.5f * Offset);
+	if (lerp) {
+		if (EdgeTable[cube.CubeIndex] & 1)
+			Vertices[0] = InterpolateVertex(cube.Points[0], cube.Points[1], cube.Values[0], cube.Values[1]) * Offset;
+		if (EdgeTable[cube.CubeIndex] & 2)
+			Vertices[1] = InterpolateVertex(cube.Points[1], cube.Points[2], cube.Values[1], cube.Values[2]) * Offset;
+		if (EdgeTable[cube.CubeIndex] & 4)
+			Vertices[2] = InterpolateVertex(cube.Points[2], cube.Points[3], cube.Values[2], cube.Values[3]) * Offset;
+		if (EdgeTable[cube.CubeIndex] & 8)
+			Vertices[3] = InterpolateVertex(cube.Points[3], cube.Points[0], cube.Values[3], cube.Values[0]) * Offset;
+		if (EdgeTable[cube.CubeIndex] & 16)
+			Vertices[4] = InterpolateVertex(cube.Points[4], cube.Points[5], cube.Values[4], cube.Values[5]) * Offset;
+		if (EdgeTable[cube.CubeIndex] & 32)
+			Vertices[5] = InterpolateVertex(cube.Points[5], cube.Points[6], cube.Values[5], cube.Values[6]) * Offset;
+		if (EdgeTable[cube.CubeIndex] & 64)
+			Vertices[6] = InterpolateVertex(cube.Points[6], cube.Points[7], cube.Values[6], cube.Values[7]) * Offset;
+		if (EdgeTable[cube.CubeIndex] & 128)
+			Vertices[7] = InterpolateVertex(cube.Points[7], cube.Points[4], cube.Values[7], cube.Values[4]) * Offset;
+		if (EdgeTable[cube.CubeIndex] & 256)
+			Vertices[8] = InterpolateVertex(cube.Points[0], cube.Points[4], cube.Values[0], cube.Values[4]) * Offset;
+		if (EdgeTable[cube.CubeIndex] & 512)
+			Vertices[9] = InterpolateVertex(cube.Points[1], cube.Points[5], cube.Values[1], cube.Values[5]) * Offset;
+		if (EdgeTable[cube.CubeIndex] & 1024)
+			Vertices[10] = InterpolateVertex(cube.Points[2], cube.Points[6], cube.Values[2], cube.Values[6]) * Offset;
+		if (EdgeTable[cube.CubeIndex] & 2048)
+			Vertices[11] = InterpolateVertex(cube.Points[3], cube.Points[7], cube.Values[3], cube.Values[7]) * Offset;
+	}
+	else {
+		if (EdgeTable[cube.CubeIndex] & 1)
+			Vertices[0] = (FVector(cube.Points[0] + cube.Points[1]) * 0.5f * Offset);
+		if (EdgeTable[cube.CubeIndex] & 2)
+			Vertices[1] = (FVector(cube.Points[1] + cube.Points[2]) * 0.5f * Offset);
+		if (EdgeTable[cube.CubeIndex] & 4)
+			Vertices[2] = (FVector(cube.Points[2] + cube.Points[3]) * 0.5f * Offset);
+		if (EdgeTable[cube.CubeIndex] & 8)
+			Vertices[3] = (FVector(cube.Points[3] + cube.Points[0]) * 0.5f * Offset);
+		if (EdgeTable[cube.CubeIndex] & 16)
+			Vertices[4] = (FVector(cube.Points[4] + cube.Points[5]) * 0.5f * Offset);
+		if (EdgeTable[cube.CubeIndex] & 32)
+			Vertices[5] = (FVector(cube.Points[5] + cube.Points[6]) * 0.5f * Offset);
+		if (EdgeTable[cube.CubeIndex] & 64)
+			Vertices[6] = (FVector(cube.Points[6] + cube.Points[7]) * 0.5f * Offset);
+		if (EdgeTable[cube.CubeIndex] & 128)
+			Vertices[7] = (FVector(cube.Points[7] + cube.Points[4]) * 0.5f * Offset);
+		if (EdgeTable[cube.CubeIndex] & 256)
+			Vertices[8] = (FVector(cube.Points[0] + cube.Points[4]) * 0.5f * Offset);
+		if (EdgeTable[cube.CubeIndex] & 512)
+			Vertices[9] = (FVector(cube.Points[1] + cube.Points[5]) * 0.5f * Offset);
+		if (EdgeTable[cube.CubeIndex] & 1024)
+			Vertices[10] = (FVector(cube.Points[2] + cube.Points[6]) * 0.5f * Offset);
+		if (EdgeTable[cube.CubeIndex] & 2048)
+			Vertices[11] = (FVector(cube.Points[3] + cube.Points[7]) * 0.5f * Offset);
+	}
+
 
 	AllVertices.Append(Vertices);
 }
@@ -237,6 +266,25 @@ void AMarchingCubesActor::SpawnDebugSphere(const FVector& location, const float&
 	DebugSphereInstance->SetActorLocation(location * Offset);
 	DebugSphereInstance->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
 	DebugSphereInstance->SetValue(value);
+}
+
+FVector AMarchingCubesActor::InterpolateVertex(const FVector& pointA, const FVector& pointB, const float& valueA, const float& valueB)
+{
+
+	if(FMath::Abs(SurfaceLevel - valueA) < 0.00001f)
+		return pointA;
+	if (FMath::Abs(SurfaceLevel - valueB) < 0.00001f)
+		return pointB;
+	if(FMath::Abs(valueA - valueB) < 0.00001f)
+		return pointA;
+
+
+	FVector interpolatedVertex = FVector::ZeroVector;
+	float t = (SurfaceLevel - valueA) / (valueB - valueA);
+	interpolatedVertex.X = FMath::Lerp(pointA.X, pointB.X, t);
+	interpolatedVertex.Y = FMath::Lerp(pointA.Y, pointB.Y, t);
+	interpolatedVertex.Z = FMath::Lerp(pointA.Z, pointB.Z, t);
+	return interpolatedVertex;
 }
 
 
