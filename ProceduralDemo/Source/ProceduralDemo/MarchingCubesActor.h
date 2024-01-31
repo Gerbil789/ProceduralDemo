@@ -22,7 +22,7 @@ class PROCEDURALDEMO_API AMarchingCubesActor : public AActor
 	
 public:	
 	AMarchingCubesActor();
-
+	~AMarchingCubesActor();
 	UPROPERTY(EditAnywhere, Category = "MarchingCubes")
 	TSubclassOf<ADebugSphereActor> DebugSphereActorBlueprint;
 
@@ -49,7 +49,7 @@ private:
 
 	TArray<FVector> AllVertices;
 	TArray<int32> AllTriangles;
-
+	FVector ChunkOffset;
 
 	float Offset = 100.0f;
 	bool Debug = false;

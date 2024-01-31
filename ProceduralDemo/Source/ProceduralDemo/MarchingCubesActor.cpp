@@ -10,12 +10,19 @@ AMarchingCubesActor::AMarchingCubesActor()
 	ProceduralMeshComponent->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 }
 
+AMarchingCubesActor::~AMarchingCubesActor()
+{
+	//CleanUpMesh();
+	UE_LOG(LogTemp, Warning, TEXT("AMarchingCubesActor destroyed"));
+}
+
 void AMarchingCubesActor::GenerateMesh(const FIntVector& gridSize, const float& surfaceLevel, const float& offset, const bool& lerp, const bool& debug)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Generate started"));
 	SurfaceLevel = surfaceLevel;
 	Offset = offset;
 	Debug = debug;
+	ChunkOffset = FVector(gridSize.X * Offset / 2, gridSize.Y * Offset / 2, gridSize.Z * Offset / 2);
 	CleanUpMesh();
 
 	AllVertices.Empty();
@@ -71,6 +78,7 @@ void AMarchingCubesActor::GenerateMesh(const FIntVector& gridSize, const float& 
 
 	ProceduralMeshComponent->CreateMeshSection(0, AllVertices, AllTriangles, TArray<FVector>(), TArray<FVector2D>(), TArray<FColor>(), TArray<FProcMeshTangent>(), true);
 
+
 	if (!MeshMaterial)
 	{
 		UE_LOG(LogTemp, Error, TEXT("MeshMaterial not found"));
@@ -104,59 +112,61 @@ void AMarchingCubesActor::GenerateCubeMesh(const Cube& cube, const int32& cubeIn
 		AllTriangles.Add(AllVertices.Num() + TriTable[cubeIndex][i + 2]);
 	}
 
+	
+
 	//use linear interpolation 
 	if (lerp) {
 		if (EdgeTable[cubeIndex] & 1)
-			Vertices[0] = InterpolateVertex(cube.Points[0], cube.Points[1], cube.Values[0], cube.Values[1]) * Offset;
+			Vertices[0] = InterpolateVertex(cube.Points[0], cube.Points[1], cube.Values[0], cube.Values[1]) * Offset - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 2)
-			Vertices[1] = InterpolateVertex(cube.Points[1], cube.Points[2], cube.Values[1], cube.Values[2]) * Offset;
+			Vertices[1] = InterpolateVertex(cube.Points[1], cube.Points[2], cube.Values[1], cube.Values[2]) * Offset - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 4)
-			Vertices[2] = InterpolateVertex(cube.Points[2], cube.Points[3], cube.Values[2], cube.Values[3]) * Offset;
+			Vertices[2] = InterpolateVertex(cube.Points[2], cube.Points[3], cube.Values[2], cube.Values[3]) * Offset - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 8)
-			Vertices[3] = InterpolateVertex(cube.Points[3], cube.Points[0], cube.Values[3], cube.Values[0]) * Offset;
+			Vertices[3] = InterpolateVertex(cube.Points[3], cube.Points[0], cube.Values[3], cube.Values[0]) * Offset - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 16)
-			Vertices[4] = InterpolateVertex(cube.Points[4], cube.Points[5], cube.Values[4], cube.Values[5]) * Offset;
+			Vertices[4] = InterpolateVertex(cube.Points[4], cube.Points[5], cube.Values[4], cube.Values[5]) * Offset - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 32)
-			Vertices[5] = InterpolateVertex(cube.Points[5], cube.Points[6], cube.Values[5], cube.Values[6]) * Offset;
+			Vertices[5] = InterpolateVertex(cube.Points[5], cube.Points[6], cube.Values[5], cube.Values[6]) * Offset - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 64)
-			Vertices[6] = InterpolateVertex(cube.Points[6], cube.Points[7], cube.Values[6], cube.Values[7]) * Offset;
+			Vertices[6] = InterpolateVertex(cube.Points[6], cube.Points[7], cube.Values[6], cube.Values[7]) * Offset - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 128)
-			Vertices[7] = InterpolateVertex(cube.Points[7], cube.Points[4], cube.Values[7], cube.Values[4]) * Offset;
+			Vertices[7] = InterpolateVertex(cube.Points[7], cube.Points[4], cube.Values[7], cube.Values[4]) * Offset - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 256)
-			Vertices[8] = InterpolateVertex(cube.Points[0], cube.Points[4], cube.Values[0], cube.Values[4]) * Offset;
+			Vertices[8] = InterpolateVertex(cube.Points[0], cube.Points[4], cube.Values[0], cube.Values[4]) * Offset - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 512)
-			Vertices[9] = InterpolateVertex(cube.Points[1], cube.Points[5], cube.Values[1], cube.Values[5]) * Offset;
+			Vertices[9] = InterpolateVertex(cube.Points[1], cube.Points[5], cube.Values[1], cube.Values[5]) * Offset - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 1024)
-			Vertices[10] = InterpolateVertex(cube.Points[2], cube.Points[6], cube.Values[2], cube.Values[6]) * Offset;
+			Vertices[10] = InterpolateVertex(cube.Points[2], cube.Points[6], cube.Values[2], cube.Values[6]) * Offset - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 2048)
-			Vertices[11] = InterpolateVertex(cube.Points[3], cube.Points[7], cube.Values[3], cube.Values[7]) * Offset;
+			Vertices[11] = InterpolateVertex(cube.Points[3], cube.Points[7], cube.Values[3], cube.Values[7]) * Offset - ChunkOffset;
 	}
 	else {
 		//use midpoint interpolation
 		if (EdgeTable[cubeIndex] & 1)
-			Vertices[0] = (FVector(cube.Points[0] + cube.Points[1]) * 0.5f * Offset);
+			Vertices[0] = (FVector(cube.Points[0] + cube.Points[1]) * 0.5f * Offset) - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 2)
-			Vertices[1] = (FVector(cube.Points[1] + cube.Points[2]) * 0.5f * Offset);
+			Vertices[1] = (FVector(cube.Points[1] + cube.Points[2]) * 0.5f * Offset) - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 4)
-			Vertices[2] = (FVector(cube.Points[2] + cube.Points[3]) * 0.5f * Offset);
+			Vertices[2] = (FVector(cube.Points[2] + cube.Points[3]) * 0.5f * Offset) - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 8)
-			Vertices[3] = (FVector(cube.Points[3] + cube.Points[0]) * 0.5f * Offset);
+			Vertices[3] = (FVector(cube.Points[3] + cube.Points[0]) * 0.5f * Offset) - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 16)
-			Vertices[4] = (FVector(cube.Points[4] + cube.Points[5]) * 0.5f * Offset);
+			Vertices[4] = (FVector(cube.Points[4] + cube.Points[5]) * 0.5f * Offset) - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 32)
-			Vertices[5] = (FVector(cube.Points[5] + cube.Points[6]) * 0.5f * Offset);
+			Vertices[5] = (FVector(cube.Points[5] + cube.Points[6]) * 0.5f * Offset) - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 64)
-			Vertices[6] = (FVector(cube.Points[6] + cube.Points[7]) * 0.5f * Offset);
+			Vertices[6] = (FVector(cube.Points[6] + cube.Points[7]) * 0.5f * Offset) - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 128)
-			Vertices[7] = (FVector(cube.Points[7] + cube.Points[4]) * 0.5f * Offset);
+			Vertices[7] = (FVector(cube.Points[7] + cube.Points[4]) * 0.5f * Offset) - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 256)
-			Vertices[8] = (FVector(cube.Points[0] + cube.Points[4]) * 0.5f * Offset);
+			Vertices[8] = (FVector(cube.Points[0] + cube.Points[4]) * 0.5f * Offset) - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 512)
-			Vertices[9] = (FVector(cube.Points[1] + cube.Points[5]) * 0.5f * Offset);
+			Vertices[9] = (FVector(cube.Points[1] + cube.Points[5]) * 0.5f * Offset) - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 1024)
-			Vertices[10] = (FVector(cube.Points[2] + cube.Points[6]) * 0.5f * Offset);
+			Vertices[10] = (FVector(cube.Points[2] + cube.Points[6]) * 0.5f * Offset) - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 2048)
-			Vertices[11] = (FVector(cube.Points[3] + cube.Points[7]) * 0.5f * Offset);
+			Vertices[11] = (FVector(cube.Points[3] + cube.Points[7]) * 0.5f * Offset) - ChunkOffset;
 	}
 
 
@@ -204,7 +214,8 @@ void AMarchingCubesActor::GeneratePoints(const FIntVector& gridSize, float min, 
 			for (int32 Z = 0; Z < gridSize.Z; Z++)
 			{
 				FVector GridPoint(X, Y, Z);
-				FVector WorldPoint = ChunkLocation + GridPoint; 
+
+				FVector WorldPoint = ChunkLocation + GridPoint;
 
 				float PerlinNoiseValue = FMath::PerlinNoise3D(WorldPoint / 25.0f);
 				float RemappedValue = FMath::GetMappedRangeValueClamped(FVector2D(-1.0f, 1.0f), FVector2D(min, max), PerlinNoiseValue);

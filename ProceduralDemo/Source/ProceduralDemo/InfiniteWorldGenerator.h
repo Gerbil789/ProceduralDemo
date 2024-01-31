@@ -12,12 +12,14 @@ class PROCEDURALDEMO_API AInfiniteWorldGenerator : public AActor
 	
 public:	
 	AInfiniteWorldGenerator();
-
+	~AInfiniteWorldGenerator();
 	virtual void Tick(float DeltaTime) override;
 
 	UFUNCTION(BlueprintCallable, Category = "MarchingCubes")
+	void GenerateInitialChunks(const float& radius, const FVector& playerLocation);
 
-	void GenerateInitialMeshActors(const float& radius);
+	UFUNCTION(BlueprintCallable, Category = "MarchingCubes")
+	void CleanUpChunks();
 
 protected:
 	virtual void BeginPlay() override;
@@ -28,4 +30,6 @@ protected:
 	
 private:
 	void UpdateWorld(const FVector& PlayerLocation);
+
+	TMap<FVector, AMarchingCubesActor*> ChunkActors;
 };
