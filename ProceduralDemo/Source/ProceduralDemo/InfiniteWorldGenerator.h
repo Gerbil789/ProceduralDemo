@@ -1,9 +1,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "MarchingCubesActor.h"
+#include "DebugSphereActor.h"
+#include "Chunk.h"
 #include "GameFramework/Actor.h"
 #include "InfiniteWorldGenerator.generated.h"
+
+
+
 
 UCLASS()
 class PROCEDURALDEMO_API AInfiniteWorldGenerator : public AActor
@@ -15,21 +19,45 @@ public:
 	~AInfiniteWorldGenerator();
 	virtual void Tick(float DeltaTime) override;
 
-	UFUNCTION(BlueprintCallable, Category = "MarchingCubes")
-	void GenerateInitialChunks(const float& radius, const FVector& playerLocation);
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfiniteWorld")
+	EMeshGenerationAlgorithm MeshGenerationAlgorithm = EMeshGenerationAlgorithm::MarchingCubes;
 
-	UFUNCTION(BlueprintCallable, Category = "MarchingCubes")
+	UFUNCTION(BlueprintCallable, Category = "InfiniteWorld")
+	void GenerateInitialChunks();
+
+	UFUNCTION(BlueprintCallable, Category = "InfiniteWorld")
 	void CleanUpChunks();
 
 protected:
 	virtual void BeginPlay() override;
 
-	UPROPERTY(EditAnywhere, Category = "MarchingCubes")
-	TSubclassOf<AMarchingCubesActor> MarchingCubesActorBlueptint;
+	UPROPERTY(EditAnywhere, Category = "InfiniteWorld")
+	TSubclassOf<AChunk> ChunkActorBlueprint;
+
+	UPROPERTY(EditAnywhere, Category = "InfiniteWorld")
+	TSubclassOf<ADebugSphereActor> DebugActorBlueprint;
+
+	UPROPERTY(EditAnywhere, Category = "InfiniteWorld")
+	int LoadDistance = 2;
+
+	UPROPERTY(EditAnywhere, Category = "InfiniteWorld")
+	int UnloadDistance = 3;
+
+	UPROPERTY(EditAnywhere, Category = "InfiniteWorld")
+	float ChunkSize = 1000;
 
 	
 private:
 	void UpdateWorld(const FVector& PlayerLocation);
 
-	TMap<FVector, AMarchingCubesActor*> ChunkActors;
+	FIntVector CurrentChunkPosition;
+
+	//TMap<FIntVector, ADebugSphereActor*> LoadedChunks;
+	TMap<FIntVector, AChunk*> LoadedChunks;
+
+	void LoadChunk(const FIntVector& ChunkLocation);
+
+	void UnloadChunk(const FIntVector& ChunkLocation);
+
+	FIntVector GetChunkPosition(const FVector& WorldPosition);
 };

@@ -15,7 +15,7 @@ AInfiniteWorldGenerator::~AInfiniteWorldGenerator()
 
 void AInfiniteWorldGenerator::CleanUpChunks()
 {
-	ChunkActors.Empty();
+	LoadedChunks.Empty();
 
 	TArray<AActor*> ChildActors;
 	this->GetAttachedActors(ChildActors);
@@ -39,61 +39,126 @@ void AInfiniteWorldGenerator::Tick(float DeltaTime)
 
 	FVector PlayerLocation = GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation();
 	//UE_LOG(LogTemp, Warning, TEXT("PlayerLocation: %s"), *PlayerLocation.ToString());
-
+	UpdateWorld(PlayerLocation);
 }
 
 
-void AInfiniteWorldGenerator::GenerateInitialChunks(const float& radius, const FVector& playerLocation)
+void AInfiniteWorldGenerator::GenerateInitialChunks()
 {
-	//FVector PlayerLocation = GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation();
-	CleanUpChunks();
-
-	if (MarchingCubesActorBlueptint == nullptr)
+	if (ChunkActorBlueprint == nullptr)
 	{
 		UE_LOG(LogTemp, Error, TEXT("MarchingCubesActorBlueptint is not set in the editor for %s"), *GetName());
 		return;
 	}
-
-	FActorSpawnParameters SpawnParams;
-
-
-	const float ChunkSpacing = 5000.0f;
-
-	float distanceToPlayer;
-
-	for (int32 X = -5; X < 5; ++X)
+	if (DebugActorBlueprint == nullptr)
 	{
-		for (int32 Y = -5; Y < 5; ++Y)
-		{
-			for (int32 Z = -5; Z < 5; ++Z) {
-				FVector SpawnLocation = FVector(X * ChunkSpacing, Y * ChunkSpacing, Z * ChunkSpacing);
-				distanceToPlayer = FVector::Dist(playerLocation, SpawnLocation);
-
-				if (distanceToPlayer > radius) {
-					continue;
-				}
-
-				if (ChunkActors.Contains(SpawnLocation)) {
-					continue;
-				}
-
-				AMarchingCubesActor* ChunkInstance = GetWorld()->SpawnActor<AMarchingCubesActor>(MarchingCubesActorBlueptint, SpawnLocation, FRotator::ZeroRotator, SpawnParams);
-
-				if (!ChunkInstance)
-				{
-					UE_LOG(LogTemp, Error, TEXT("Failed to spawn ChunkInstance at location: %s"), *SpawnLocation.ToString());
-			
-				}
-				UE_LOG(LogTemp, Warning, TEXT("Spawned ChunkInstance at location: %s"), *SpawnLocation.ToString());
-				ChunkInstance->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
-				ChunkInstance->GenerateMesh(FIntVector(51, 51, 51), 0.48f, 100.0f, true);
-			}
-		}
+		UE_LOG(LogTemp, Error, TEXT("DebugActor is not set in the editor for %s"), *GetName());
+		return;
 	}
+
+	UE_LOG(LogTemp, Warning, TEXT("GenerateInitialChunks"));
+
+	CurrentChunkPosition = FIntVector(99999, 99999, 99999); //make it something that will never be reached
+
+	UpdateWorld(FVector(0,0,0));
+	
 }
 
 void AInfiniteWorldGenerator::UpdateWorld(const FVector& PlayerLocation)
 {
+	FIntVector ChunkPosition = GetChunkPosition(PlayerLocation);
+	if (ChunkPosition == CurrentChunkPosition)
+	{
+		return;
+	}
 
+	CurrentChunkPosition = ChunkPosition;
+	UE_LOG(LogTemp, Warning, TEXT("CurrentChunkPosition: %s"), *CurrentChunkPosition.ToString());
+
+
+	//load chunks
+	for (int32 X = CurrentChunkPosition.X - LoadDistance; X <= CurrentChunkPosition.X + LoadDistance; ++X)
+	{
+		for (int32 Y = CurrentChunkPosition.Y - LoadDistance; Y <= CurrentChunkPosition.Y + LoadDistance; ++Y)
+		{
+			for (int32 Z = CurrentChunkPosition.Z - LoadDistance; Z <= CurrentChunkPosition.Z + LoadDistance; ++Z)
+			{
+				FIntVector ChunkLocation = FIntVector(X, Y, Z);
+
+				if (LoadedChunks.Contains(ChunkLocation))
+				{
+					continue;
+				}
+
+				LoadChunk(ChunkLocation);
+			}
+		}	
+	}
+
+	//unload chunks
+	for (auto& Elem : LoadedChunks)
+	{
+		FIntVector ChunkLocation = Elem.Key;
+		if (FMath::Abs(ChunkLocation.X - CurrentChunkPosition.X) > UnloadDistance ||
+			FMath::Abs(ChunkLocation.Y - CurrentChunkPosition.Y) > UnloadDistance ||
+			FMath::Abs(ChunkLocation.Z - CurrentChunkPosition.Z) > UnloadDistance)
+		{
+			UnloadChunk(ChunkLocation);
+		}
+	}
+}
+
+void AInfiniteWorldGenerator::LoadChunk(const FIntVector& ChunkLocation)
+{
+	FVector SpawnLocation = FVector(ChunkLocation.X, ChunkLocation.Y, ChunkLocation.Z) * ChunkSize + ChunkSize/2;
+	AChunk* ChunkInstance = GetWorld()->SpawnActor<AChunk>(ChunkActorBlueprint, SpawnLocation, FRotator::ZeroRotator);
+	if (!ChunkInstance)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to spawn ChunkInstance at location: %s"), *SpawnLocation.ToString());
+		return;
+	}
+	ChunkInstance->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
+
+	switch (MeshGenerationAlgorithm)
+	{
+	case EMeshGenerationAlgorithm::MarchingCubes:
+		//ChunkInstance->GenerateMesh(FIntVector(11, 11, 11), 0.5f, 500.0f, true);
+		ChunkInstance->GenerateMesh();
+		break;
+	case EMeshGenerationAlgorithm::OtherAlgorithm1:
+		UE_LOG(LogTemp, Error, TEXT("OtherAlgorithm1 is not implemented yet"));
+		break;
+	case EMeshGenerationAlgorithm::OtherAlgorithm2:
+		UE_LOG(LogTemp, Error, TEXT("OtherAlgorithm2 is not implemented yet"));
+		break;
+	default:
+		UE_LOG(LogTemp, Error, TEXT("Invalid MeshGenerationAlgorithm for %s"), *GetName());
+		return;
+	}
+
+
+	LoadedChunks.Add(ChunkLocation, ChunkInstance);
+}
+
+void AInfiniteWorldGenerator::UnloadChunk(const FIntVector& ChunkLocation)
+{
+	AChunk* ChunkInstance = LoadedChunks[ChunkLocation];
+	if (!ChunkInstance)
+	{
+		UE_LOG(LogTemp, Error, TEXT("ChunkInstance is null for location: %s"), *ChunkLocation.ToString());
+		return;
+	}
+	ChunkInstance->MarkPendingKill();
+	ChunkInstance->Destroy();
+	LoadedChunks.Remove(ChunkLocation);
+}
+
+FIntVector AInfiniteWorldGenerator::GetChunkPosition(const FVector& WorldPosition)
+{
+	return FIntVector(
+		FMath::FloorToInt(WorldPosition.X / ChunkSize),
+		FMath::FloorToInt(WorldPosition.Y / ChunkSize),
+		FMath::FloorToInt(WorldPosition.Z / ChunkSize)
+	);
 
 }

@@ -2,11 +2,18 @@
 
 #include "DebugSphereActor.h"
 #include "Components/SphereComponent.h"
-#include "Components/TextRenderComponent.h"
+
 
 ADebugSphereActor::ADebugSphereActor()
 {
 	PrimaryActorTick.bCanEverTick = true;
+
+	
+}
+
+void ADebugSphereActor::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
 
 }
 
@@ -38,14 +45,8 @@ void ADebugSphereActor::SetValue(const float& val)
 	StaticMeshComponent->SetMaterial(0, DynamicMaterial);
 
 	//set text
-	UTextRenderComponent* TextRenderComponent = this->FindComponentByClass<UTextRenderComponent>();
-	if (!TextRenderComponent)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("TextRenderComponent not found in spawned actor."));
-	}
-
 	FVector ActorLocation = this->GetActorLocation();
-	
+	TextRenderComponent = this->FindComponentByClass<UTextRenderComponent>();
 
 	FString FormattedText = FString::Printf(TEXT("%.2f\n[%d,%d,%d]"), this->value, FMath::RoundToInt(ActorLocation.X), FMath::RoundToInt(ActorLocation.Y), FMath::RoundToInt(ActorLocation.Z));
 	TextRenderComponent->SetText(FText::FromString(FormattedText));

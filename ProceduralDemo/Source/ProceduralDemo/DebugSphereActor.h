@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/TextRenderComponent.h"
 #include "GameFramework/Actor.h"
 #include "DebugSphereActor.generated.h"
 
@@ -11,7 +12,12 @@ class PROCEDURALDEMO_API ADebugSphereActor : public AActor
 	
 public:	
 	ADebugSphereActor();
+	virtual void Tick(float DeltaTime) override;
+
 	void SetValue(const float& val);
 
 	float value = -10.0f;
+private:
+
+	UTextRenderComponent* TextRenderComponent;
 };

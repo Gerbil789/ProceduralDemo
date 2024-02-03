@@ -1,14 +1,11 @@
-#include "MarchingCubesActor.h"
-#include "ProceduralMeshComponent.h"
-#include "Math/UnrealMathUtility.h"
+#include "MarchingCubesAlgorithm.h"
 
-// Marching cubes lookup tables
-const FVector AMarchingCubesActor::CornerOffsets[8] = {
+const FVector MarchingCubesAlgorithm::CornerOffsets[8] = {
 		FVector(0, 0, 0), FVector(1, 0, 0), FVector(1, 1, 0), FVector(0, 1, 0),
 		FVector(0, 0, 1), FVector(1, 0, 1), FVector(1, 1, 1), FVector(0, 1, 1)
 };
 
-const int AMarchingCubesActor::EdgeTable[256] = {
+const int MarchingCubesAlgorithm::EdgeTable[256] = {
 		0x0  , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
 		0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
 		0x190, 0x99 , 0x393, 0x29a, 0x596, 0x49f, 0x795, 0x69c,
@@ -43,7 +40,7 @@ const int AMarchingCubesActor::EdgeTable[256] = {
 		0x70c, 0x605, 0x50f, 0x406, 0x30a, 0x203, 0x109, 0x0
 };
 
-const int32 AMarchingCubesActor::TriTable[256][16] = {
+const int32 MarchingCubesAlgorithm::TriTable[256][16] = {
 		{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
 		{0, 8, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
 		{0, 1, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
@@ -303,107 +300,94 @@ const int32 AMarchingCubesActor::TriTable[256][16] = {
 };
 
 
-AMarchingCubesActor::AMarchingCubesActor()
+MeshData MarchingCubesAlgorithm::GenerateMesh(const FVector& chunkLocation, const FIntVector& gridSize, const float& surfaceLevel, const float& offset, const bool& lerp)
 {
-	PrimaryActorTick.bCanEverTick = true;
-	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
-	ProceduralMeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ProceduralMeshComponent"));
-	ProceduralMeshComponent->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
-}
-
-AMarchingCubesActor::~AMarchingCubesActor()
-{
-	UE_LOG(LogTemp, Warning, TEXT("AMarchingCubesActor destructor started"));
-	CleanUpMesh();
-	UE_LOG(LogTemp, Warning, TEXT("AMarchingCubesActor destroyed"));
-}
-
-void AMarchingCubesActor::GenerateMesh(const FIntVector& gridSize, const float& surfaceLevel, const float& offset, const bool& lerp)
-{
-	UE_LOG(LogTemp, Warning, TEXT("Generate started"));
+	ChunkLocation = chunkLocation / offset;
 	SurfaceLevel = surfaceLevel;
 	Offset = offset;
+	Lerp = lerp;
 	ChunkOffset = FVector(gridSize.X * Offset / 2, gridSize.Y * Offset / 2, gridSize.Z * Offset / 2);
-	CleanUpMesh();
+	MeshData Mesh;
+	TMap<FVector, float> Points;
+	GeneratePoints(gridSize + FIntVector(1,1,1), Points);
 
-
-
-
-	if (!ProceduralMeshComponent)
-	{
-		UE_LOG(LogTemp, Error, TEXT("ProceduralMeshComponent not found"));
-		return;
-	}
-
-	GeneratePoints(gridSize, 0.0f, 1.0f);
-
-
-
-	for (int32 X = 0; X < gridSize.X - 1; ++X) {
-		for (int32 Y = 0; Y < gridSize.Y - 1; ++Y) {
-			for (int32 Z = 0; Z < gridSize.Z - 1; ++Z) {
-				Cube cube;
+	for (int32 X = 0; X < gridSize.X; X++) {
+		for (int32 Y = 0; Y < gridSize.Y; Y++) {
+			for (int32 Z = 0; Z < gridSize.Z; Z++)
+			{
+				Cube CurrentCube;
 				FVector CubeOrigin(X, Y, Z);
-				
+
 				// Determine the scalar values at the cube corners
 				for (int32 i = 0; i < 8; ++i) {
 					FVector Corner = CubeOrigin + CornerOffsets[i];
-					if (!Points.Contains(Corner)) {
-						UE_LOG(LogTemp, Error, TEXT("Corner %d not found in Points for %s"), i, *CubeOrigin.ToString());
-						return;
-					}
-					cube.Values[i] = Points[Corner];
-					cube.Points[i] = Corner;
+					CurrentCube.Values[i] = Points[Corner];
+					CurrentCube.Points[i] = Corner;
 				}
 
 				// Determine the cube configuration (binary representation)
 				int32 CubeIndex = 0;
-				for (int32 i = 0; i < 8; ++i) {
-					if (cube.Values[i] < SurfaceLevel)
+				for (int32 i = 0; i < 8; i++)
+				{
+					if (CurrentCube.Values[i] < surfaceLevel)
+					{
 						CubeIndex |= 1 << i;
+					}
 				}
 
 				// Skip the cube if it is entirely inside or outside of the surface
-				if (EdgeTable[CubeIndex] == 0) {
+				if (CubeIndex == 0 || CubeIndex == 255)
+				{
 					continue;
 				}
 
-				GenerateCubeMesh(cube, CubeIndex, lerp);
+				GenerateCubeMesh(CurrentCube, CubeIndex, Mesh);
 			}
 		}
 	}
 
-	ProceduralMeshComponent->CreateMeshSection(0, AllVertices, AllTriangles, TArray<FVector>(), TArray<FVector2D>(), TArray<FColor>(), TArray<FProcMeshTangent>(), true);
+	return Mesh;
+}	
 
-
-	if (!MeshMaterial)
+void MarchingCubesAlgorithm::GeneratePoints(const FIntVector& gridSize, TMap<FVector, float>& points)
+{
+	if (gridSize.X <= 0 || gridSize.Y <= 0 || gridSize.Z <= 0)
 	{
-		UE_LOG(LogTemp, Error, TEXT("MeshMaterial not found"));
+		UE_LOG(LogTemp, Error, TEXT("Invalid size"));
 		return;
 	}
 
-	ProceduralMeshComponent->SetMaterial(0, MeshMaterial);
+	for (int32 X = 0; X < gridSize.X; X++) {
+		for (int32 Y = 0; Y < gridSize.Y; Y++) {
+			for (int32 Z = 0; Z < gridSize.Z; Z++)
+			{
+				FVector GridPoint(X, Y, Z);
 
-	UE_LOG(LogTemp, Warning, TEXT("Generate finished"));
+				FVector WorldPoint = ChunkLocation + GridPoint;
+
+				float PerlinNoiseValue = FMath::PerlinNoise3D(WorldPoint / 25.0f);
+				float RemappedValue = FMath::GetMappedRangeValueClamped(FVector2D(-1.0f, 1.0f), FVector2D(0.0f, 1.0f), PerlinNoiseValue);
+
+				points.Add(GridPoint, RemappedValue);
+			}
+		}
+	}
 }
 
 
-
-void AMarchingCubesActor::GenerateCubeMesh(const Cube& cube, const int32& cubeIndex, const bool& lerp)
+void MarchingCubesAlgorithm::GenerateCubeMesh(const Cube& cube, const int32& cubeIndex, MeshData& meshData)
 {
 	TArray<FVector> Vertices;
 	Vertices.SetNum(12);
 
 	for (int i = 0; TriTable[cubeIndex][i] != -1; i += 3) {
-		AllTriangles.Add(AllVertices.Num() + TriTable[cubeIndex][i]);
-		AllTriangles.Add(AllVertices.Num() + TriTable[cubeIndex][i + 1]);
-		AllTriangles.Add(AllVertices.Num() + TriTable[cubeIndex][i + 2]);
+		meshData.Triangles.Add(meshData.Vertices.Num() + TriTable[cubeIndex][i]);
+		meshData.Triangles.Add(meshData.Vertices.Num() + TriTable[cubeIndex][i + 1]);
+		meshData.Triangles.Add(meshData.Vertices.Num() + TriTable[cubeIndex][i + 2]);
 	}
 
-	
-
 	//use linear interpolation 
-	if (lerp) {
+	if (Lerp) {
 		if (EdgeTable[cubeIndex] & 1)
 			Vertices[0] = InterpolateVertex(cube.Points[0], cube.Points[1], cube.Values[0], cube.Values[1]) * Offset - ChunkOffset;
 		if (EdgeTable[cubeIndex] & 2)
@@ -457,69 +441,18 @@ void AMarchingCubesActor::GenerateCubeMesh(const Cube& cube, const int32& cubeIn
 			Vertices[11] = (FVector(cube.Points[3] + cube.Points[7]) * 0.5f * Offset) - ChunkOffset;
 	}
 
+	meshData.Vertices.Append(Vertices);
 
-	AllVertices.Append(Vertices);
 }
 
-void AMarchingCubesActor::CleanUpMesh()
+FVector MarchingCubesAlgorithm::InterpolateVertex(const FVector& pointA, const FVector& pointB, const float& valueA, const float& valueB)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Cleanup started"));
-
-	Points.Empty();
-	AllVertices.Empty();
-	AllTriangles.Empty();
-
-	
-	//if (!ProceduralMeshComponent)
-	//{
-	//	UE_LOG(LogTemp, Error, TEXT("ProceduralMeshComponent not found"));
-	//	return;
-	//}
-	//ProceduralMeshComponent->ClearAllMeshSections();
-
-	UE_LOG(LogTemp, Warning, TEXT("Cleanup finished"));
-}
-
-void AMarchingCubesActor::GeneratePoints(const FIntVector& gridSize, float min, float max)
-{
-	UE_LOG(LogTemp, Warning, TEXT("GeneratePoints started"));
-
-	if (gridSize.X <= 0 || gridSize.Y <= 0 || gridSize.Z <= 0)
-	{
-		UE_LOG(LogTemp, Error, TEXT("Invalid size"));
-		return;
-	}
-	FVector ChunkLocation = GetActorLocation() / Offset; // Convert to grid space
-
-	for (int32 X = 0; X < gridSize.X; X++) {
-		for (int32 Y = 0; Y < gridSize.Y; Y++) {
-			for (int32 Z = 0; Z < gridSize.Z; Z++)
-			{
-				FVector GridPoint(X, Y, Z);
-
-				FVector WorldPoint = ChunkLocation + GridPoint;
-
-				float PerlinNoiseValue = FMath::PerlinNoise3D(WorldPoint / 25.0f);
-				float RemappedValue = FMath::GetMappedRangeValueClamped(FVector2D(-1.0f, 1.0f), FVector2D(min, max), PerlinNoiseValue);
-
-				Points.Add(GridPoint, RemappedValue);
-			}
-		}
-	}
-	UE_LOG(LogTemp, Warning, TEXT("%d points generated"), Points.Num());
-}
-
-
-FVector AMarchingCubesActor::InterpolateVertex(const FVector& pointA, const FVector& pointB, const float& valueA, const float& valueB)
-{
-
-	if(FMath::Abs(SurfaceLevel - valueA) < 0.00001f)
+	if (FMath::Abs(SurfaceLevel - valueA) < 0.00001f)
 		return pointA;
 	if (FMath::Abs(SurfaceLevel - valueB) < 0.00001f)
 		return pointB;
-	if(FMath::Abs(valueA - valueB) < 0.00001f)
+	if (FMath::Abs(valueA - valueB) < 0.00001f)
 		return pointA;
-
 
 	FVector interpolatedVertex = FVector::ZeroVector;
 	float t = (SurfaceLevel - valueA) / (valueB - valueA);
@@ -528,5 +461,3 @@ FVector AMarchingCubesActor::InterpolateVertex(const FVector& pointA, const FVec
 	interpolatedVertex.Z = FMath::Lerp(pointA.Z, pointB.Z, t);
 	return interpolatedVertex;
 }
-
-
