@@ -123,7 +123,7 @@ void AInfiniteWorldGenerator::LoadChunk(const FIntVector& ChunkLocation)
 	{
 	case EMeshGenerationAlgorithm::MarchingCubes:
 		//ChunkInstance->GenerateMesh(FIntVector(11, 11, 11), 0.5f, 500.0f, true);
-		ChunkInstance->GenerateMesh();
+		ChunkInstance->GenerateMesh(Smooth, Normals);
 		break;
 	case EMeshGenerationAlgorithm::OtherAlgorithm1:
 		UE_LOG(LogTemp, Error, TEXT("OtherAlgorithm1 is not implemented yet"));
@@ -148,7 +148,7 @@ void AInfiniteWorldGenerator::UnloadChunk(const FIntVector& ChunkLocation)
 		UE_LOG(LogTemp, Error, TEXT("ChunkInstance is null for location: %s"), *ChunkLocation.ToString());
 		return;
 	}
-	ChunkInstance->MarkPendingKill();
+	ChunkInstance->MarkAsGarbage();
 	ChunkInstance->Destroy();
 	LoadedChunks.Remove(ChunkLocation);
 }

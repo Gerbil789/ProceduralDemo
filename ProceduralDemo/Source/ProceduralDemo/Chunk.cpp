@@ -11,7 +11,7 @@ AChunk::AChunk()
 
 }
 
-void AChunk::GenerateMesh()
+void AChunk::GenerateMesh(const bool& smooth, const bool& normals)
 {
 	if (!ProceduralMeshComponent)
 	{
@@ -23,16 +23,25 @@ void AChunk::GenerateMesh()
 	MeshData Mesh;
 	MarchingCubesAlgorithm* MarchingCubes = new MarchingCubesAlgorithm();
 
-	Mesh = MarchingCubes->GenerateMesh(GetActorLocation(), FIntVector(10, 10, 10), 0.48f, 500.0f, false);
+	Mesh = MarchingCubes->GenerateMesh(GetActorLocation(), FIntVector(10, 10, 10), 0.48f, 500.0f, smooth);
 	TArray<FVector>& Vertices = Mesh.Vertices;
 	TArray<int32>& Triangles = Mesh.Triangles;
+	TArray<FVector> Normals;
 
-	//UE_LOG(LogTemp, Warning, TEXT("Mesh.Vertices.Num() = %d"), Vertices.Num());
-	//UE_LOG(LogTemp, Warning, TEXT("Mesh.Triangles.Num() = %d"), Triangles.Num());
+	if (normals) {
+		Normals = Mesh.Normals;
+	}
+	else {
+		Normals.Empty();
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Mesh.Vertices.Num() = %d"), Vertices.Num());
+	UE_LOG(LogTemp, Warning, TEXT("Mesh.Triangles.Num() = %d"), Triangles.Num());
+	UE_LOG(LogTemp, Warning, TEXT("Mesh.Normals.Num() = %d"), Normals.Num());
 
 	delete MarchingCubes;
 
-	ProceduralMeshComponent->CreateMeshSection(0, Vertices, Triangles, TArray<FVector>(), TArray<FVector2D>(), TArray<FColor>(), TArray<FProcMeshTangent>(), true);
+	ProceduralMeshComponent->CreateMeshSection(0, Vertices, Triangles, Normals, TArray<FVector2D>(), TArray<FColor>(), TArray<FProcMeshTangent>(), true);
 
 	if (!MeshMaterial)
 	{

@@ -12,6 +12,7 @@ struct MeshData
 {
 	TArray<FVector> Vertices;
 	TArray<int32> Triangles;
+	TArray<FVector> Normals;
 };
 
 class PROCEDURALDEMO_API MarchingCubesAlgorithm

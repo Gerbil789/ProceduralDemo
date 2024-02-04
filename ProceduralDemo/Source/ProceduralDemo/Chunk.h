@@ -27,11 +27,13 @@ public:
 	UMaterialInterface* MeshMaterial;
 
 	UFUNCTION(BlueprintCallable, Category = "Chunk")
-	void GenerateMesh();
+	void GenerateMesh(const bool& smooth = false, const bool& normals = false);
 
 	UFUNCTION(BlueprintCallable, Category = "Chunk")
 	void CleanUpMesh();
 
 	UProceduralMeshComponent* ProceduralMeshComponent = nullptr;
+private:
+
 
 };

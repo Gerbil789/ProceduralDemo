@@ -22,6 +22,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfiniteWorld")
 	EMeshGenerationAlgorithm MeshGenerationAlgorithm = EMeshGenerationAlgorithm::MarchingCubes;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfiniteWorld")
+	bool Smooth = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "InfiniteWorld")
+	bool Normals = false;
+
 	UFUNCTION(BlueprintCallable, Category = "InfiniteWorld")
 	void GenerateInitialChunks();
 

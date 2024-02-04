@@ -380,11 +380,7 @@ void MarchingCubesAlgorithm::GenerateCubeMesh(const Cube& cube, const int32& cub
 	TArray<FVector> Vertices;
 	Vertices.SetNum(12);
 
-	for (int i = 0; TriTable[cubeIndex][i] != -1; i += 3) {
-		meshData.Triangles.Add(meshData.Vertices.Num() + TriTable[cubeIndex][i]);
-		meshData.Triangles.Add(meshData.Vertices.Num() + TriTable[cubeIndex][i + 1]);
-		meshData.Triangles.Add(meshData.Vertices.Num() + TriTable[cubeIndex][i + 2]);
-	}
+
 
 	//use linear interpolation 
 	if (Lerp) {
@@ -441,7 +437,35 @@ void MarchingCubesAlgorithm::GenerateCubeMesh(const Cube& cube, const int32& cub
 			Vertices[11] = (FVector(cube.Points[3] + cube.Points[7]) * 0.5f * Offset) - ChunkOffset;
 	}
 
-	meshData.Vertices.Append(Vertices);
+	int32 vericesCount = meshData.Vertices.Num();
+
+	for (int i = 0; TriTable[cubeIndex][i] != -1; i += 3) {
+
+		meshData.Triangles.Add(vericesCount + i);
+		meshData.Triangles.Add(vericesCount + i + 1);
+		meshData.Triangles.Add(vericesCount + i + 2);
+
+		FVector v1 = Vertices[TriTable[cubeIndex][i]];
+		FVector v2 = Vertices[TriTable[cubeIndex][i + 2]];
+		FVector v3 = Vertices[TriTable[cubeIndex][i + 1]];
+		FVector faceNormal = FVector::CrossProduct(v2 - v1, v3 - v1).GetSafeNormal();
+
+		// Add the face normal to each vertex normal
+		meshData.Normals.Add(faceNormal);
+		meshData.Normals.Add(faceNormal);
+		meshData.Normals.Add(faceNormal);
+
+
+		meshData.Vertices.Add(v1);
+		meshData.Vertices.Add(v2);
+		meshData.Vertices.Add(v3);
+
+	}
+
+	//meshData.Vertices.Append(Vertices);
+
+
+
 
 }
 
