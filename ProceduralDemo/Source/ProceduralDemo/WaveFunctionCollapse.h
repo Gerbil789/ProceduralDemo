@@ -12,10 +12,10 @@ struct FWFCBlockDataStruct : public FTableRowBase {
 
 public:
     UPROPERTY(EditAnywhere, Category = "MyDataTable")
-    FString Up;
+    FString Top;
 
     UPROPERTY(EditAnywhere, Category = "MyDataTable")
-    FString Down;
+    FString Bottom;
 
     UPROPERTY(EditAnywhere, Category = "MyDataTable")
     FString Left;
@@ -31,6 +31,9 @@ public:
 
     UPROPERTY(EditAnywhere, Category = "MyDataTable")
     int Variants;
+
+    UPROPERTY(EditAnywhere, Category = "MyDataTable")
+    int Priority;
 };
 
 
@@ -72,14 +75,15 @@ private:
 
     TMap<FString, UInstancedStaticMeshComponent*> InstancedMeshComponents = TMap<FString, UInstancedStaticMeshComponent*>();
     TMap<FIntVector, TArray<int>> IndexGrid = TMap<FIntVector, TArray<int>>();
+    TMap<FIntVector, int> CollapsedBlocks = TMap<FIntVector, int>();
 
     void WFC();
 
-    void Propagate(const WFCBlock& block, const FIntVector& position);
+    void CollapseBlock(const FIntVector& position);
 
-    void SpawnMesh(const WFCBlock& block, const FIntVector& position);
+    void Propagate(const FIntVector& position);
 
-    void RemoveInvalidBlocks(const WFCBlock& block, const FIntVector& position, const FString& direction);
+    void RemoveInvalidBlocks(const FIntVector& positionToRemove, const FIntVector& positionToCompare);
 
-    bool CompareSockets(const WFCBlock& block, const WFCBlock& neighborBlock, const FString& direction);
+    //bool CompareSockets(const FWFCSocket& socket1, const FWFCSocket& socket2);
 };
