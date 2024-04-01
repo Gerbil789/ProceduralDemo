@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "WaveFunctionCollapse.generated.h"
 
+
 USTRUCT()
 struct FWFCBlockDataStruct : public FTableRowBase {
     GENERATED_BODY()
