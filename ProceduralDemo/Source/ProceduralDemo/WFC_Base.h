@@ -12,30 +12,30 @@ class PROCEDURALDEMO_API AWFC_Base : public AActor
 public:	
 	AWFC_Base();
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WFC_Block", Meta = (DisplayName = "Top    (+Z)"))
-    FString Top;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WFC_Block", Meta = (DisplayName = "Bottom (-Z)"))
-    FString Bottom;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WFC_Block", Meta = (DisplayName = "Left   (-X)"))
-    FString Left;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WFC_Block", Meta = (DisplayName = "Right  (+X)"))
-    FString Right;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WFC_Block", Meta = (DisplayName = "Front  (+Y)"))
-    FString Front;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WFC_Block", Meta = (DisplayName = "Back   (-Y)"))
-    FString Back;
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WFC_Block")
-    int Priority;
+	UStaticMesh* Mesh;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WFC_Block")
-    int Variants;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block_Sockets", Meta = (DisplayName = "Top    (+Z)"))
+    FString Top = "TOP";
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block_Sockets", Meta = (DisplayName = "Bottom (-Z)"))
+    FString Bottom = "BOTTOM";
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block_Sockets", Meta = (DisplayName = "Left   (-X)"))
+    FString Left = "LEFT";
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block_Sockets", Meta = (DisplayName = "Right  (+X)"))
+    FString Right = "RIGHT";
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block_Sockets", Meta = (DisplayName = "Front  (+Y)"))
+    FString Front = "FRONT";
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block_Sockets", Meta = (DisplayName = "Back   (-Y)"))
+    FString Back = "BACK";
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Other")
+    int Priority = 1;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Other")
+    int Variants = 1;
 };

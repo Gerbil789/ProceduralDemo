@@ -90,7 +90,7 @@ struct FWFCSocketVertical : public FWFCSocket
 class WFCBlock
 {
 public:
-	FString Mesh;
+	int MeshId;
 	int Rotation = 0;
 
 	FWFCSocketHorizontal Left;
@@ -101,8 +101,8 @@ public:
 	FWFCSocketVertical Top;
 	FWFCSocketVertical Bottom;
 
-	WFCBlock(FString mesh, const int& rotation, const FString& top, const FString& bottom, const FString& left, const FString& right, const FString& front, const FString& back) :
-		Mesh(mesh),
+	WFCBlock(const int& meshId, const int& rotation, const FString& top, const FString& bottom, const FString& left, const FString& right, const FString& front, const FString& back) :
+		MeshId(meshId),
 		Rotation(rotation),
 		Top(ParseVertical(top, rotation)),
 		Bottom(ParseVertical(bottom, rotation)),
@@ -148,7 +148,7 @@ public:
 
 FString ToString() const
 	{
-		FString str = Mesh + TEXT(" Rot: ") + FString::FromInt(Rotation) + TEXT(" Top: ");
+		FString str = MeshId + TEXT(" Rot: ") + FString::FromInt(Rotation) + TEXT(" Top: ");
 		str += Top.ToString() + TEXT(" Bottom: ") + Bottom.ToString() + TEXT(" Left: ");
 		str += Left.ToString() + TEXT(" Right: ") + Right.ToString() + TEXT(" Front: ") + Front.ToString() + TEXT(" Back: ") + Back.ToString();
 		return str;

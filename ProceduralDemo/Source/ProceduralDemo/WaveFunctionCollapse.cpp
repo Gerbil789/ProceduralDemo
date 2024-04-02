@@ -6,73 +6,57 @@ AWaveFunctionCollapse::AWaveFunctionCollapse()
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
 }
 
-void AWaveFunctionCollapse::LoadDataTable()
+void AWaveFunctionCollapse::LoadBlocks()
 {
+	UE_LOG(LogTemp, Warning, TEXT("Loading blocks"));
 	//clear blocks
 	Blocks.Empty();
 
-	if (!MyDataTable)
+	CleanUpMesh();
+
+
+	int meshId = 1;
+	for (auto block : BlueprintBlocks)
 	{
-		UE_LOG(LogTemp, Error, TEXT("No datatable found"));
-		return;
-	}
+		AWFC_Base& base = *block->GetDefaultObject<AWFC_Base>();
 
-	//add empty block (no mesh)
-	WFCBlock emptyBlock = WFCBlock("empty", 0, "0i", "0i", "0s", "0s", "0s", "0s");
-	Blocks.Add(emptyBlock);
-
-	//add fill block (no mesh)
-	WFCBlock fillBlock = WFCBlock("fill", 0, "1i", "1i", "1s", "1s", "1s", "1s");
-	Blocks.Add(fillBlock);
-
-	//load blocks from datatable
-	TArray<FName> RowNames = MyDataTable->GetRowNames();
-	for (auto RowName : RowNames)
-	{
-		//find static mesh
-		FString AssetPath = FString::Printf(TEXT("/Game/Meshes/WFC_Demo/WFC_Blocks_%s"), *RowName.ToString());
-		UStaticMesh* StaticMesh = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, *AssetPath));
-		if (!StaticMesh)
-		{
-			UE_LOG(LogTemp, Error, TEXT("StaticMesh not found: %s"), *AssetPath);
+		if (base.Mesh == nullptr) {
+			//empty/fill block
+			auto NewBlock = WFCBlock(0, 0, base.Top, base.Bottom, base.Left, base.Right, base.Front, base.Back);
+			Blocks.Add(NewBlock);
 			continue;
 		}
 
-		//find row in datatable
-		FWFCBlockDataStruct* Row = MyDataTable->FindRow<FWFCBlockDataStruct>(RowName, TEXT("LookupBlockData"));
-		if (!Row) {
-			UE_LOG(LogTemp, Warning, TEXT("Failed to find row: %s"), *RowName.ToString());
-			continue;
+		if (base.Variants >= 1) {
+			auto NewBlock = WFCBlock(meshId, 0, base.Top, base.Bottom, base.Left, base.Right, base.Front, base.Back);
+			Blocks.Add(NewBlock);
 		}
 
-		//create block 
-		TArray<FString> HorizontalSockets = { Row->Left, Row->Back, Row->Right, Row->Front };
+		if (base.Variants >= 2) {
+			auto NewBlock = WFCBlock(meshId, -90, base.Top, base.Bottom, base.Back, base.Front, base.Left, base.Right);
+			Blocks.Add(NewBlock);
+		}
 
-		FString meshName = FString::Printf(TEXT("WFC_Blocks_%s"), *RowName.ToString());
-		WFCBlock NewBlock = WFCBlock(meshName, 0, Row->Top, Row->Bottom, HorizontalSockets[0], HorizontalSockets[2], HorizontalSockets[3], HorizontalSockets[1]);
-		Blocks.Add(NewBlock);
+		if (base.Variants >= 3) {
+			auto NewBlock = WFCBlock(meshId, -180, base.Top, base.Bottom, base.Right, base.Left, base.Back, base.Front);
+			Blocks.Add(NewBlock);
+		}
+
+		if (base.Variants >= 4) {
+			auto NewBlock = WFCBlock(meshId,-270, base.Top, base.Bottom, base.Front, base.Back, base.Right, base.Left);
+			Blocks.Add(NewBlock);
+		}
 
 		//create instanced mesh component
 		UInstancedStaticMeshComponent* NewInstancedMeshComponent = NewObject<UInstancedStaticMeshComponent>(this);
 		NewInstancedMeshComponent->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
-		NewInstancedMeshComponent->SetStaticMesh(StaticMesh);
-		InstancedMeshComponents.Add(meshName, NewInstancedMeshComponent);
+		NewInstancedMeshComponent->SetStaticMesh(base.Mesh);
+		InstancedMeshComponents.Add(meshId, NewInstancedMeshComponent);
 
-		//add rotated blocks
-		for (int i = 1; i < Row->Variants; i++) {
-			std::rotate(HorizontalSockets.GetData(), HorizontalSockets.GetData() + 1, HorizontalSockets.GetData() + HorizontalSockets.Num());
-
-			NewBlock = WFCBlock(meshName, i * (-90), Row->Top, Row->Bottom, HorizontalSockets[0], HorizontalSockets[2], HorizontalSockets[3], HorizontalSockets[1]);
-			Blocks.Add(NewBlock);
-		}
+		meshId++;
 	}
 	UE_LOG(LogTemp, Warning, TEXT("Loaded blocks count: %d"), Blocks.Num());
-	//for(auto Block : Blocks) {
-	//	UE_LOG(LogTemp, Warning, TEXT("%s"), *Block.ToString());
-	//}
 }
-
-
 
 void AWaveFunctionCollapse::CleanUpMesh()
 {
@@ -93,6 +77,7 @@ void AWaveFunctionCollapse::GenerateMesh()
 
 	if (Blocks.IsEmpty()) {
 		UE_LOG(LogTemp, Error, TEXT("No blocks found"));
+		LoadBlocks();
 		return;
 	}
 
@@ -116,43 +101,42 @@ void AWaveFunctionCollapse::GenerateMesh()
 		}
 	}
 
-	//add empty tiles around
-	for (int X = -1; X < Size.X + 1; X++)
-	{
-		for (int Y = -1; Y < Size.Y + 1; Y++)
-		{
-			
-			if (!(X == -1 || X == Size.X || Y == -1 || Y == Size.Y)) continue;
-	
-			CollapsedBlocks.Add(FIntVector(X, Y, 0), 2); //floor block	
-		}
-	}
+	////add empty tiles around
+	//for (int X = -1; X < Size.X + 1; X++)
+	//{
+	//	for (int Y = -1; Y < Size.Y + 1; Y++)
+	//	{
+	//		
+	//		if (!(X == -1 || X == Size.X || Y == -1 || Y == Size.Y)) continue;
+	//
+	//		CollapsedBlocks.Add(FIntVector(X, Y, 0), 2); //floor block	
+	//	}
+	//}
 
 
 
-	//add fill tiles below
-	for (int X = 0; X < Size.X; X++)
-	{
-		for (int Y = 0; Y < Size.Y; Y++)
-		{
-			CollapsedBlocks.Add(FIntVector(X, Y, -1), 1); //fill block
-			Propagate(FIntVector(X, Y, 0));
-		}
-	}
+	////add fill tiles below
+	//for (int X = 0; X < Size.X; X++)
+	//{
+	//	for (int Y = 0; Y < Size.Y; Y++)
+	//	{
+	//		CollapsedBlocks.Add(FIntVector(X, Y, -1), 1); //fill block
+	//		Propagate(FIntVector(X, Y, 0));
+	//	}
+	//}
 
 
-	for (int X = 0; X < Size.X; X++)
-	{
-		for (int Y = 0; Y < Size.Y; Y++)
-		{
-			CollapsedBlocks.Add(FIntVector(X, Y, Size.Z), 0); //empty block
-		}
-	}
+	//for (int X = 0; X < Size.X; X++)
+	//{
+	//	for (int Y = 0; Y < Size.Y; Y++)
+	//	{
+	//		CollapsedBlocks.Add(FIntVector(X, Y, Size.Z), 0); //empty block
+	//	}
+	//}
 
 
 	WFC();
 }
-
 
 void AWaveFunctionCollapse::WFC()
 {
@@ -169,10 +153,14 @@ void AWaveFunctionCollapse::WFC()
 		return;
 	}
 
-	FIntVector LowestEntropyBlockPosition = FIntVector(0,0,0);
+
+
+	
 	int LowestEntropy = 999;
 
 	//find block (position) with lowest entropy
+	TSet<FIntVector> LowestEntropySet = TSet<FIntVector>();
+
 	for (auto IndexArray : IndexGrid)
 	{
 		int BlockEntropy = IndexArray.Value.Num();
@@ -183,13 +171,21 @@ void AWaveFunctionCollapse::WFC()
 			continue;
 		}
 
-		//todo: add randomization (set -> pick random)
 		if (BlockEntropy < LowestEntropy)
 		{
 			LowestEntropy = BlockEntropy;
-			LowestEntropyBlockPosition = IndexArray.Key;
+			LowestEntropySet.Empty();
+			LowestEntropySet.Add(IndexArray.Key);
+		}
+		else if (BlockEntropy == LowestEntropy)
+		{
+			LowestEntropySet.Add(IndexArray.Key);
 		}
 	}
+
+	//pick random block from lowest entropy set
+	FIntVector LowestEntropyBlockPosition = LowestEntropySet.Array()[FMath::RandRange(0, LowestEntropySet.Num() - 1)];
+
 
 	//check if position is within grid
 	if(!IndexGrid.Contains(LowestEntropyBlockPosition)) {
@@ -216,24 +212,24 @@ void AWaveFunctionCollapse::CollapseBlock(const FIntVector& position)
 
 
 	//spawn mesh
-	if (Block.Mesh == "empty" || Block.Mesh == "fill" || Block.Mesh == "empty_floor") {
-		UE_LOG(LogTemp, Warning, TEXT("Spawned empty/fill block"));
+	if (Block.MeshId == 0) {
+		UE_LOG(LogTemp, Warning, TEXT("Spawned empty block"));
 	}
 	else {
 		FVector Location = FVector(position) * Offset - FVector(Size.X * Offset / 2, Size.Y * Offset / 2, -Offset / 2);
 
-		UE_LOG(LogTemp, Warning, TEXT("SPAWNED STATICMESH: %s | ROT: %d| POS[%d, %d, %d] | RIGHT: %s BACK: %s LEFT: %s FRONT: %s"), *Block.Mesh, Block.Rotation, position.X, position.Y, position.Z, *Block.Right.ToString(), *Block.Back.ToString(), *Block.Left.ToString(), *Block.Front.ToString());
+		//UE_LOG(LogTemp, Warning, TEXT("SPAWNED STATICMESH_ID: %d | ROT: %d| POS[%d, %d, %d] | RIGHT: %s BACK: %s LEFT: %s FRONT: %s"), Block.MeshId, Block.Rotation, position.X, position.Y, position.Z, *Block.Right.ToString(), *Block.Back.ToString(), *Block.Left.ToString(), *Block.Front.ToString());
 
 		FTransform Transform = FTransform(Location);
 		Transform.SetRotation(FQuat(FRotator(0, Block.Rotation, 0)));
 
-		if (!InstancedMeshComponents.Contains(Block.Mesh))
+		if (!InstancedMeshComponents.Contains(Block.MeshId))
 		{
-			UE_LOG(LogTemp, Error, TEXT("No instanced mesh component for %s"), *Block.Mesh);
+			UE_LOG(LogTemp, Error, TEXT("No instanced mesh component for %d"), Block.MeshId);
 			return;
 		}
 
-		InstancedMeshComponents[Block.Mesh]->AddInstance(Transform);
+		InstancedMeshComponents[Block.MeshId]->AddInstance(Transform);
 	}
 
 	//remove collapsed tile from grid
@@ -360,14 +356,14 @@ void AWaveFunctionCollapse::RemoveInvalidBlocks(const FIntVector& positionToRemo
 		IndexGrid[positionToRemove].Remove(Index);
 	}
 
-	//UE_LOG(LogTemp, Warning, TEXT("Entropy after propagation: %d"), IndexGrid[positionToRemove].Num());
+	/*UE_LOG(LogTemp, Warning, TEXT("Entropy after propagation: %d"), IndexGrid[positionToRemove].Num());
 
-	//UE_LOG(LogTemp, Warning, TEXT("Remaining blocks:"));
+	UE_LOG(LogTemp, Warning, TEXT("Remaining blocks:"));
 
-	//for(auto Index : IndexGrid[positionToRemove])
-	//{
-	//	UE_LOG(LogTemp, Warning, TEXT("%s"), *Blocks[Index].ToString());
-	//}
+	for(auto Index : IndexGrid[positionToRemove])
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s"), *Blocks[Index].ToString());
+	}*/
 }
 
 
