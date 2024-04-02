@@ -34,8 +34,5 @@ public:
     FString Back = "BACK";
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Other")
-    int Priority = 1;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Other")
     int Variants = 1;
 };

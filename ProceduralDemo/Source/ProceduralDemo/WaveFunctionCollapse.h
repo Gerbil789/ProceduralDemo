@@ -7,6 +7,18 @@
 #include "GameFramework/Actor.h"
 #include "WaveFunctionCollapse.generated.h"
 
+USTRUCT(BlueprintType)
+struct FBlockWithPriority
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    TSubclassOf<AWFC_Base> Block;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    int32 Priority = 1;
+};
+
 UCLASS()
 class PROCEDURALDEMO_API AWaveFunctionCollapse : public AActor
 {
@@ -31,14 +43,13 @@ public:
     void LoadBlocks();
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WFC_Blocks")
-    TArray<TSubclassOf<AWFC_Base>> BlueprintBlocks;
+    TArray<FBlockWithPriority> BlueprintBlocks;
 
 private:
     TArray<WFCBlock> Blocks;
     int Offset = 200;
     FTimerHandle DelayHandle;
     int infiniteLoopBreaker = 1000; //TODO: remove this
-
     TMap<int, UInstancedStaticMeshComponent*> InstancedMeshComponents = TMap<int, UInstancedStaticMeshComponent*>();
     TMap<FIntVector, TArray<int>> IndexGrid = TMap<FIntVector, TArray<int>>();
     TMap<FIntVector, int> CollapsedBlocks = TMap<FIntVector, int>();

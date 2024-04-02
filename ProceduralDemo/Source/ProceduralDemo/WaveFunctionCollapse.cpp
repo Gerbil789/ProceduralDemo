@@ -18,32 +18,32 @@ void AWaveFunctionCollapse::LoadBlocks()
 	int meshId = 1;
 	for (auto block : BlueprintBlocks)
 	{
-		AWFC_Base& base = *block->GetDefaultObject<AWFC_Base>();
+		AWFC_Base& base = *block.Block->GetDefaultObject<AWFC_Base>();
 
 		if (base.Mesh == nullptr) {
 			//empty/fill block
-			auto NewBlock = WFCBlock(0, 0, base.Top, base.Bottom, base.Left, base.Right, base.Front, base.Back);
+			auto NewBlock = WFCBlock(0, 0, base.Top, base.Bottom, base.Left, base.Right, base.Front, base.Back, block.Priority);
 			Blocks.Add(NewBlock);
 			continue;
 		}
 
 		if (base.Variants >= 1) {
-			auto NewBlock = WFCBlock(meshId, 0, base.Top, base.Bottom, base.Left, base.Right, base.Front, base.Back);
+			auto NewBlock = WFCBlock(meshId, 0, base.Top, base.Bottom, base.Left, base.Right, base.Front, base.Back, block.Priority);
 			Blocks.Add(NewBlock);
 		}
 
 		if (base.Variants >= 2) {
-			auto NewBlock = WFCBlock(meshId, -90, base.Top, base.Bottom, base.Back, base.Front, base.Left, base.Right);
+			auto NewBlock = WFCBlock(meshId, -90, base.Top, base.Bottom, base.Back, base.Front, base.Left, base.Right, block.Priority);
 			Blocks.Add(NewBlock);
 		}
 
 		if (base.Variants >= 3) {
-			auto NewBlock = WFCBlock(meshId, -180, base.Top, base.Bottom, base.Right, base.Left, base.Back, base.Front);
+			auto NewBlock = WFCBlock(meshId, -180, base.Top, base.Bottom, base.Right, base.Left, base.Back, base.Front, block.Priority);
 			Blocks.Add(NewBlock);
 		}
 
 		if (base.Variants >= 4) {
-			auto NewBlock = WFCBlock(meshId,-270, base.Top, base.Bottom, base.Front, base.Back, base.Right, base.Left);
+			auto NewBlock = WFCBlock(meshId,-270, base.Top, base.Bottom, base.Front, base.Back, base.Right, base.Left, block.Priority);
 			Blocks.Add(NewBlock);
 		}
 
@@ -51,6 +51,8 @@ void AWaveFunctionCollapse::LoadBlocks()
 		UInstancedStaticMeshComponent* NewInstancedMeshComponent = NewObject<UInstancedStaticMeshComponent>(this);
 		NewInstancedMeshComponent->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 		NewInstancedMeshComponent->SetStaticMesh(base.Mesh);
+		NewInstancedMeshComponent->bUseDefaultCollision = true;
+		NewInstancedMeshComponent->SetVisibility(true, false);
 		InstancedMeshComponents.Add(meshId, NewInstancedMeshComponent);
 
 		meshId++;
@@ -134,7 +136,6 @@ void AWaveFunctionCollapse::GenerateMesh()
 	//	}
 	//}
 
-
 	WFC();
 }
 
@@ -195,8 +196,17 @@ void AWaveFunctionCollapse::WFC()
 
 	CollapseBlock(LowestEntropyBlockPosition);
 
-	//call WFC again with delay
-	GetWorldTimerManager().SetTimer(DelayHandle, this, &AWaveFunctionCollapse::WFC, Delay, false);
+	
+	if (Delay == 0) {
+		//call WFC again
+		WFC();
+	}
+	else {
+		//call WFC again with delay
+		GetWorldTimerManager().SetTimer(DelayHandle, this, &AWaveFunctionCollapse::WFC, Delay, false);
+	}
+
+	
 }
 
 
@@ -205,10 +215,24 @@ void AWaveFunctionCollapse::WFC()
 void AWaveFunctionCollapse::CollapseBlock(const FIntVector& position)
 {
 	//pick random block from lowest entropy set and remove the rest
-	int BlockIndex = IndexGrid[position][FMath::RandRange(0, IndexGrid[position].Num() - 1)];
-	WFCBlock& Block = Blocks[BlockIndex];
+	int totalPrioritySum = 0;
+	for (auto i : IndexGrid[position]) {
+		totalPrioritySum += Blocks[i].Priority;
+	}
+	int randomNumber = FMath::RandRange(0, totalPrioritySum);
+
+	int blockIndex;
+	for (auto i : IndexGrid[position]) {
+		randomNumber -= Blocks[i].Priority;
+		if (randomNumber <= 0) {
+			blockIndex = i;
+			break;
+		}
+	}
+
+	WFCBlock& Block = Blocks[blockIndex];
 	IndexGrid[position].Empty();
-	IndexGrid[position].Add(BlockIndex);
+	IndexGrid[position].Add(blockIndex);
 
 
 	//spawn mesh
@@ -229,12 +253,12 @@ void AWaveFunctionCollapse::CollapseBlock(const FIntVector& position)
 			return;
 		}
 
-		InstancedMeshComponents[Block.MeshId]->AddInstance(Transform);
+		InstancedMeshComponents[Block.MeshId]->AddInstance(Transform); //spawn mesh
 	}
 
 	//remove collapsed tile from grid
 	IndexGrid.Remove(position);
-	CollapsedBlocks.Add(position, BlockIndex);
+	CollapsedBlocks.Add(position, blockIndex);
 
 	// propagate constraints to neighbors
 	Propagate(position + FIntVector(1, 0, 0));

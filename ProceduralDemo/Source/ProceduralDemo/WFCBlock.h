@@ -101,7 +101,9 @@ public:
 	FWFCSocketVertical Top;
 	FWFCSocketVertical Bottom;
 
-	WFCBlock(const int& meshId, const int& rotation, const FString& top, const FString& bottom, const FString& left, const FString& right, const FString& front, const FString& back) :
+	int Priority = 1;
+
+	WFCBlock(const int& meshId, const int& rotation, const FString& top, const FString& bottom, const FString& left, const FString& right, const FString& front, const FString& back, const int& priority) :
 		MeshId(meshId),
 		Rotation(rotation),
 		Top(ParseVertical(top, rotation)),
@@ -109,7 +111,8 @@ public:
 		Left(ParseHorizontal(left)),
 		Right(ParseHorizontal(right)),
 		Front(ParseHorizontal(front)),
-		Back(ParseHorizontal(back))
+		Back(ParseHorizontal(back)),
+		Priority(priority)
 	{}
 
 	static FWFCSocketHorizontal ParseHorizontal(const FString& str)
