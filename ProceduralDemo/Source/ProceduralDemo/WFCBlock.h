@@ -149,9 +149,9 @@ public:
 		return socket;
 	}
 
-FString ToString() const
+	FString ToString() const
 	{
-		FString str = MeshId + TEXT(" Rot: ") + FString::FromInt(Rotation) + TEXT(" Top: ");
+		FString str = TEXT(" MeshId:") + FString::FromInt(MeshId) + TEXT(" Rot: ") + FString::FromInt(Rotation) + TEXT(" Top: ");
 		str += Top.ToString() + TEXT(" Bottom: ") + Bottom.ToString() + TEXT(" Left: ");
 		str += Left.ToString() + TEXT(" Right: ") + Right.ToString() + TEXT(" Front: ") + Front.ToString() + TEXT(" Back: ") + Back.ToString();
 		return str;

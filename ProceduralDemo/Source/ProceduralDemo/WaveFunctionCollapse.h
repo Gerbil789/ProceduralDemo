@@ -49,7 +49,7 @@ private:
     TArray<WFCBlock> Blocks;
     int Offset = 200;
     FTimerHandle DelayHandle;
-    int infiniteLoopBreaker = 1000; //TODO: remove this
+    int infiniteLoopBreaker = 20000; //TODO: remove this
     TMap<int, UInstancedStaticMeshComponent*> InstancedMeshComponents = TMap<int, UInstancedStaticMeshComponent*>();
     TMap<FIntVector, TArray<int>> IndexGrid = TMap<FIntVector, TArray<int>>();
     TMap<FIntVector, int> CollapsedBlocks = TMap<FIntVector, int>();
@@ -60,5 +60,5 @@ private:
 
     void Propagate(const FIntVector& position);
 
-    void RemoveInvalidBlocks(const FIntVector& positionToRemove, const FIntVector& positionToCompare);
+    void RemoveInvalidBlocks(const FIntVector& position, const FIntVector& direction);
 };

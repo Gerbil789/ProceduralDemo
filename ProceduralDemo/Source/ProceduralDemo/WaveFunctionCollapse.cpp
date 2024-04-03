@@ -83,7 +83,7 @@ void AWaveFunctionCollapse::GenerateMesh()
 		return;
 	}
 
-	infiniteLoopBreaker = 5000;
+	infiniteLoopBreaker = 20000;
 	UE_LOG(LogTemp, Warning, TEXT("Generating mesh"));
 
 	//intialize grid
@@ -154,10 +154,7 @@ void AWaveFunctionCollapse::WFC()
 		return;
 	}
 
-
-
-	
-	int LowestEntropy = 999;
+	int LowestEntropy = TNumericLimits<int32>::Max();
 
 	//find block (position) with lowest entropy
 	TSet<FIntVector> LowestEntropySet = TSet<FIntVector>();
@@ -168,7 +165,7 @@ void AWaveFunctionCollapse::WFC()
 
 		if (BlockEntropy == 0) {
 			UE_LOG(LogTemp, Error, TEXT("BlockEntropy is 0 at position: %s"), *IndexArray.Key.ToString());
-			IndexGrid.Remove(IndexArray.Key);
+			//IndexGrid.Remove(IndexArray.Key);
 			continue;
 		}
 
@@ -271,60 +268,43 @@ void AWaveFunctionCollapse::CollapseBlock(const FIntVector& position)
 
 void AWaveFunctionCollapse::Propagate(const FIntVector& position)
 {
-	//UE_LOG(LogTemp, Warning, TEXT("PROPAGATING CONSTRAINTS at [%d, %d, %d]"), position.X, position.Y, position.Z);
+	if(!IndexGrid.Contains(position)) return;
 
-	if(!IndexGrid.Contains(position))
-	{
-		//UE_LOG(LogTemp, Error, TEXT("[PROPAGATE] IndexGrid does not contain position: %s"), *position.ToString());
-		return;
+	RemoveInvalidBlocks(position, FIntVector(1, 0, 0));
+	RemoveInvalidBlocks(position, FIntVector(-1, 0, 0));
+	RemoveInvalidBlocks(position, FIntVector(0, 1, 0));
+	RemoveInvalidBlocks(position, FIntVector(0, -1, 0));
+	RemoveInvalidBlocks(position, FIntVector(0, 0, 1));
+	RemoveInvalidBlocks(position, FIntVector(0, 0, -1));
+
+	if (IndexGrid[position].IsEmpty()) {
+		IndexGrid.Remove(position);
+		//CollapsedBlocks.Add(position, 0); //empty block
+		UE_LOG(LogTemp, Warning, TEXT("No blocks left at position: %s -> empty block"), *position.ToString());
 	}
-
-	RemoveInvalidBlocks(position, position + FIntVector(1, 0, 0));
-	RemoveInvalidBlocks(position, position + FIntVector(-1, 0, 0));
-	RemoveInvalidBlocks(position, position + FIntVector(0, 1, 0));
-	RemoveInvalidBlocks(position, position + FIntVector(0, -1, 0));
-	RemoveInvalidBlocks(position, position + FIntVector(0, 0, 1));
-	RemoveInvalidBlocks(position, position + FIntVector(0, 0, -1));
 }
 
-void AWaveFunctionCollapse::RemoveInvalidBlocks(const FIntVector& positionToRemove, const FIntVector& positionToCompare)
+void AWaveFunctionCollapse::RemoveInvalidBlocks(const FIntVector& position, const FIntVector& direction)
 {
+	if (!CollapsedBlocks.Contains(position + direction)) return;
 
-	if (!IndexGrid.Contains(positionToRemove))
-	{
-		UE_LOG(LogTemp, Error, TEXT("[RemoveInvalidBlocks] IndexGrid does not contain position: %s"), *positionToRemove.ToString());
-		return;
-	}
-
-	if (!CollapsedBlocks.Contains(positionToCompare))
-	{
-		//UE_LOG(LogTemp, Warning, TEXT("Tile not collapsed: %s"), *positionToCompare.ToString());
-		return;
-	}
-	
-	//UE_LOG(LogTemp, Warning, TEXT("Propagating constraints from %s to %s"), *positionToRemove.ToString(), *positionToCompare.ToString());
-
-	//UE_LOG(LogTemp, Warning, TEXT("Entropy before propagation: %d"), IndexGrid[positionToRemove].Num());
 	TSet<int> BlocksToRemove = TSet<int>();
-
-	FIntVector direction = positionToCompare - positionToRemove;
 
 	if(direction == FIntVector(1, 0, 0)) 
 	{
-		for (auto Index : IndexGrid[positionToRemove])
+		for (auto Index : IndexGrid[position])
 		{
-			if (Blocks[Index].Right == Blocks[CollapsedBlocks[positionToCompare]].Left) {
+			if (Blocks[Index].Right == Blocks[CollapsedBlocks[position + direction]].Left) {
 				continue;
 			}
 			BlocksToRemove.Add(Index);
 		}
-		
 	}
 	else if (direction == FIntVector(-1, 0, 0))
 	{
-		for (auto Index : IndexGrid[positionToRemove])
+		for (auto Index : IndexGrid[position])
 		{
-			if (Blocks[Index].Left == Blocks[CollapsedBlocks[positionToCompare]].Right) {
+			if (Blocks[Index].Left == Blocks[CollapsedBlocks[position + direction]].Right) {
 				continue;
 			}
 			BlocksToRemove.Add(Index);
@@ -332,9 +312,9 @@ void AWaveFunctionCollapse::RemoveInvalidBlocks(const FIntVector& positionToRemo
 	}
 	else if (direction == FIntVector(0, 1, 0))
 	{
-		for (auto Index : IndexGrid[positionToRemove])
+		for (auto Index : IndexGrid[position])
 		{
-			if (Blocks[Index].Front == Blocks[CollapsedBlocks[positionToCompare]].Back) {
+			if (Blocks[Index].Front == Blocks[CollapsedBlocks[position + direction]].Back) {
 				continue;
 			}
 			BlocksToRemove.Add(Index);
@@ -342,9 +322,9 @@ void AWaveFunctionCollapse::RemoveInvalidBlocks(const FIntVector& positionToRemo
 	}
 	else if (direction == FIntVector(0, -1, 0))
 	{
-		for (auto Index : IndexGrid[positionToRemove])
+		for (auto Index : IndexGrid[position])
 		{
-			if (Blocks[Index].Back == Blocks[CollapsedBlocks[positionToCompare]].Front) {
+			if (Blocks[Index].Back == Blocks[CollapsedBlocks[position + direction]].Front) {
 				continue;
 			}
 			BlocksToRemove.Add(Index);
@@ -352,9 +332,9 @@ void AWaveFunctionCollapse::RemoveInvalidBlocks(const FIntVector& positionToRemo
 	}
 	else if (direction == FIntVector(0, 0, 1))
 	{
-		for (auto Index : IndexGrid[positionToRemove])
+		for (auto Index : IndexGrid[position])
 		{
-			if (Blocks[Index].Top == Blocks[CollapsedBlocks[positionToCompare]].Bottom) {
+			if (Blocks[Index].Top == Blocks[CollapsedBlocks[position + direction]].Bottom) {
 				continue;
 			}
 			BlocksToRemove.Add(Index);
@@ -362,9 +342,9 @@ void AWaveFunctionCollapse::RemoveInvalidBlocks(const FIntVector& positionToRemo
 	}
 	else if (direction == FIntVector(0, 0, -1))
 	{
-		for (auto Index : IndexGrid[positionToRemove])
+		for (auto Index : IndexGrid[position])
 		{
-			if (Blocks[Index].Bottom == Blocks[CollapsedBlocks[positionToCompare]].Top) {
+			if (Blocks[Index].Bottom == Blocks[CollapsedBlocks[position + direction]].Top) {
 				continue;
 			}
 			BlocksToRemove.Add(Index);
@@ -377,21 +357,6 @@ void AWaveFunctionCollapse::RemoveInvalidBlocks(const FIntVector& positionToRemo
 
 	for(auto Index : BlocksToRemove)
 	{
-		IndexGrid[positionToRemove].Remove(Index);
+		IndexGrid[position].Remove(Index);
 	}
-
-	/*UE_LOG(LogTemp, Warning, TEXT("Entropy after propagation: %d"), IndexGrid[positionToRemove].Num());
-
-	UE_LOG(LogTemp, Warning, TEXT("Remaining blocks:"));
-
-	for(auto Index : IndexGrid[positionToRemove])
-	{
-		UE_LOG(LogTemp, Warning, TEXT("%s"), *Blocks[Index].ToString());
-	}*/
 }
-
-
-
-
-
-
