@@ -2,10 +2,14 @@
 
 #include "CoreMinimal.h"
 #include "Components/InstancedStaticMeshComponent.h"
+#include <stack>
+#include <utility>// for std::pair
 #include "WFC_Base.h"
 #include "WFCBlock.h"
 #include "GameFramework/Actor.h"
 #include "WaveFunctionCollapse.generated.h"
+
+
 
 USTRUCT(BlueprintType)
 struct FBlockWithPriority
@@ -46,6 +50,7 @@ public:
     TArray<FBlockWithPriority> BlueprintBlocks;
 
 private:
+    static const TArray<FIntVector> Directions;
     TArray<WFCBlock> Blocks;
     int Offset = 200;
     FTimerHandle DelayHandle;
@@ -54,11 +59,17 @@ private:
     TMap<FIntVector, TArray<int>> IndexGrid = TMap<FIntVector, TArray<int>>();
     TMap<FIntVector, int> CollapsedBlocks = TMap<FIntVector, int>();
 
-    void WFC();
+    std::stack<std::pair<FIntVector, int>> CalculatedBlocks;
 
-    void CollapseBlock(const FIntVector& position);
+    FIntVector GetLowestEntropyPosition();
+
+    void Collapse(const FIntVector& position);
 
     void Propagate(const FIntVector& position);
 
-    void RemoveInvalidBlocks(const FIntVector& position, const FIntVector& direction);
+    TSet<int> GetBlocksToRemove(const FIntVector& position, const FIntVector& direction);
+
+    void SpawnBlocks();
+
+    void SpawnMesh(const FIntVector& position, const int& blockIndex);
 };

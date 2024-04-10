@@ -1,5 +1,7 @@
 #include "WaveFunctionCollapse.h"
 
+const TArray<FIntVector> AWaveFunctionCollapse::Directions = { FIntVector(1, 0, 0),FIntVector(-1, 0, 0), FIntVector(0, 1, 0), FIntVector(0, -1, 0), FIntVector(0, 0, 1), FIntVector(0, 0, -1) };
+
 AWaveFunctionCollapse::AWaveFunctionCollapse()
 {
 	PrimaryActorTick.bCanEverTick = false;
@@ -43,7 +45,7 @@ void AWaveFunctionCollapse::LoadBlocks()
 		}
 
 		if (base.Variants >= 4) {
-			auto NewBlock = WFCBlock(meshId,-270, base.Top, base.Bottom, base.Front, base.Back, base.Right, base.Left, block.Priority);
+			auto NewBlock = WFCBlock(meshId, -270, base.Top, base.Bottom, base.Front, base.Back, base.Right, base.Left, block.Priority);
 			Blocks.Add(NewBlock);
 		}
 
@@ -79,11 +81,10 @@ void AWaveFunctionCollapse::GenerateMesh()
 
 	if (Blocks.IsEmpty()) {
 		UE_LOG(LogTemp, Error, TEXT("No blocks found"));
-		LoadBlocks();
 		return;
 	}
 
-	infiniteLoopBreaker = 20000;
+	infiniteLoopBreaker = 10000;
 	UE_LOG(LogTemp, Warning, TEXT("Generating mesh"));
 
 	//intialize grid
@@ -103,60 +104,26 @@ void AWaveFunctionCollapse::GenerateMesh()
 		}
 	}
 
-	////add empty tiles around
-	//for (int X = -1; X < Size.X + 1; X++)
-	//{
-	//	for (int Y = -1; Y < Size.Y + 1; Y++)
-	//	{
-	//		
-	//		if (!(X == -1 || X == Size.X || Y == -1 || Y == Size.Y)) continue;
-	//
-	//		CollapsedBlocks.Add(FIntVector(X, Y, 0), 2); //floor block	
-	//	}
-	//}
+	while (IndexGrid.IsEmpty() == false && IndexGrid.Num() != 0) {
 
+		if (infiniteLoopBreaker-- <= 0) {
+			UE_LOG(LogTemp, Error, TEXT("Infinite loop detected"));
+			return;
+		}
 
+		FIntVector lowestEntropyPosition = GetLowestEntropyPosition();
 
-	////add fill tiles below
-	//for (int X = 0; X < Size.X; X++)
-	//{
-	//	for (int Y = 0; Y < Size.Y; Y++)
-	//	{
-	//		CollapsedBlocks.Add(FIntVector(X, Y, -1), 1); //fill block
-	//		Propagate(FIntVector(X, Y, 0));
-	//	}
-	//}
-
-
-	//for (int X = 0; X < Size.X; X++)
-	//{
-	//	for (int Y = 0; Y < Size.Y; Y++)
-	//	{
-	//		CollapsedBlocks.Add(FIntVector(X, Y, Size.Z), 0); //empty block
-	//	}
-	//}
-
-	WFC();
-}
-
-void AWaveFunctionCollapse::WFC()
-{
-	//check if grid is empty
-	if (IndexGrid.IsEmpty())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("WFCGrid is empty (Finished)"));
-		return;
-	}	
-
-	//check for infinite loop
-	if (infiniteLoopBreaker-- <= 0) {
-		UE_LOG(LogTemp, Error, TEXT("Infinite loop detected"));
-		return;
+		Collapse(lowestEntropyPosition);
+		Propagate(lowestEntropyPosition);
 	}
 
+	SpawnBlocks();
+}
+
+FIntVector AWaveFunctionCollapse::GetLowestEntropyPosition()
+{
 	int LowestEntropy = TNumericLimits<int32>::Max();
 
-	//find block (position) with lowest entropy
 	TSet<FIntVector> LowestEntropySet = TSet<FIntVector>();
 
 	for (auto IndexArray : IndexGrid)
@@ -165,9 +132,10 @@ void AWaveFunctionCollapse::WFC()
 
 		if (BlockEntropy == 0) {
 			UE_LOG(LogTemp, Error, TEXT("BlockEntropy is 0 at position: %s"), *IndexArray.Key.ToString());
-			//IndexGrid.Remove(IndexArray.Key);
+			IndexGrid.Remove(IndexArray.Key);
 			continue;
 		}
+
 
 		if (BlockEntropy < LowestEntropy)
 		{
@@ -181,56 +149,148 @@ void AWaveFunctionCollapse::WFC()
 		}
 	}
 
-	//pick random block from lowest entropy set
-	FIntVector LowestEntropyBlockPosition = LowestEntropySet.Array()[FMath::RandRange(0, LowestEntropySet.Num() - 1)];
-
-
-	//check if position is within grid
-	if(!IndexGrid.Contains(LowestEntropyBlockPosition)) {
-		UE_LOG(LogTemp, Error, TEXT("IndexGrid does not contain position: %s"), *LowestEntropyBlockPosition.ToString());
-		return;
-	}
-
-	CollapseBlock(LowestEntropyBlockPosition);
-
-	
-	if (Delay == 0) {
-		//call WFC again
-		WFC();
+	if (!LowestEntropySet.IsEmpty()) {
+		FIntVector LowestEntropyBlockPosition = LowestEntropySet.Array()[FMath::RandRange(0, LowestEntropySet.Num() - 1)];
+		return LowestEntropyBlockPosition;
 	}
 	else {
-		//call WFC again with delay
-		GetWorldTimerManager().SetTimer(DelayHandle, this, &AWaveFunctionCollapse::WFC, Delay, false);
+		return FIntVector(-1, -1, -1);
+	}
+	}
+	
+void AWaveFunctionCollapse::Collapse(const FIntVector& position)
+{
+	//pick random block from lowest entropy set and remove the rest
+	int blockIndex;
+	if (IndexGrid[position].Num() > 1)
+	{
+		int totalPrioritySum = 0;
+		for (auto i : IndexGrid[position]) {
+			totalPrioritySum += Blocks[i].Priority;
+		}
+		int randomNumber = FMath::RandRange(0, totalPrioritySum);
+
+		for (auto i : IndexGrid[position]) {
+			randomNumber -= Blocks[i].Priority;
+			if (randomNumber <= 0) {
+				blockIndex = i;
+				break;
+			}
+		}
+	}
+	else
+	{
+		blockIndex = IndexGrid[position][0];
 	}
 
-	
+	IndexGrid.Remove(position);
+	CollapsedBlocks.Add(position, blockIndex);
+	CalculatedBlocks.push(std::make_pair(position, blockIndex)); //spawn mesh later
+}
+
+void AWaveFunctionCollapse::Propagate(const FIntVector& position)
+{
+	std::stack<FIntVector> Stack;
+	TSet<FIntVector> InStack;
+
+	int tmp = 0;
+	Stack.push(position);
+	InStack.Add(position);
+
+	while (!Stack.empty()) {
+		tmp++;
+		if (tmp > 10000) {
+			UE_LOG(LogTemp, Error, TEXT("Infinite loop detected inside propagation"));
+			return;
+		}
+
+		FIntVector currentPosition = Stack.top();
+		Stack.pop();
+
+
+		for (auto Direction : Directions)
+		{
+			FIntVector newPosition = currentPosition + Direction;
+			if (!IndexGrid.Contains(newPosition) || InStack.Contains(newPosition)) continue;
+
+			TSet<int> blocksToRemove = GetBlocksToRemove(position, Direction);
+			if (blocksToRemove.IsEmpty() || blocksToRemove.Num() == 0) continue;
+
+			if (blocksToRemove.Num() == IndexGrid[newPosition].Num()) {
+				UE_LOG(LogTemp, Error, TEXT("No valid blocks to propagate at position: %s"), *newPosition.ToString());
+				continue;
+			}
+
+
+			for (auto blockIndex : blocksToRemove)
+			{
+				IndexGrid[newPosition].Remove(blockIndex);
+			}
+
+			if (IndexGrid[newPosition].Num() == 0) {
+				UE_LOG(LogTemp, Error, TEXT("No blocks left at position: %s"), *newPosition.ToString());
+				IndexGrid.Remove(newPosition);
+				continue;
+			}
+
+
+			Stack.push(newPosition);
+			InStack.Add(newPosition);
+		}
+
+		InStack.Remove(currentPosition);
+
+	}
+}
+
+TSet<int> AWaveFunctionCollapse::GetBlocksToRemove(const FIntVector& position, const FIntVector& direction)
+{
+	TSet<int> BlocksToRemove;
+	if (CollapsedBlocks.Contains(position + direction)) return BlocksToRemove;
+	if(!IndexGrid.Contains(position + direction)) return BlocksToRemove;
+
+	int CollapsedIndex = CollapsedBlocks[position];
+
+	for (auto Index : IndexGrid[position + direction])
+	{
+		if ((direction.X == 1 && Blocks[CollapsedIndex].Right != Blocks[Index].Left) ||
+			(direction.X == -1 && Blocks[CollapsedIndex].Left != Blocks[Index].Right) ||
+			(direction.Y == 1 && Blocks[CollapsedIndex].Front != Blocks[Index].Back) ||
+			(direction.Y == -1 && Blocks[CollapsedIndex].Back != Blocks[Index].Front) ||
+			(direction.Z == 1 && Blocks[CollapsedIndex].Top != Blocks[Index].Bottom) ||
+			(direction.Z == -1 && Blocks[CollapsedIndex].Bottom != Blocks[Index].Top))
+		{
+			BlocksToRemove.Add(Index);
+		}
+	}
+	return BlocksToRemove;
+}
+
+void AWaveFunctionCollapse::SpawnBlocks()
+{
+	if (Delay == 0) {
+		while (CalculatedBlocks.empty() == false)
+		{
+			auto block = CalculatedBlocks.top();
+			CalculatedBlocks.pop();
+			SpawnMesh(block.first, block.second);
+		}
+
+	}
+	else {
+		while (CalculatedBlocks.empty() == false)
+		{
+			auto block = CalculatedBlocks.top();
+			CalculatedBlocks.pop();
+			SpawnMesh(block.first, block.second);
+		}
+	}
 }
 
 
-
-
-void AWaveFunctionCollapse::CollapseBlock(const FIntVector& position)
+void AWaveFunctionCollapse::SpawnMesh(const FIntVector& position, const int& blockIndex)
 {
-	//pick random block from lowest entropy set and remove the rest
-	int totalPrioritySum = 0;
-	for (auto i : IndexGrid[position]) {
-		totalPrioritySum += Blocks[i].Priority;
-	}
-	int randomNumber = FMath::RandRange(0, totalPrioritySum);
-
-	int blockIndex;
-	for (auto i : IndexGrid[position]) {
-		randomNumber -= Blocks[i].Priority;
-		if (randomNumber <= 0) {
-			blockIndex = i;
-			break;
-		}
-	}
-
 	WFCBlock& Block = Blocks[blockIndex];
-	IndexGrid[position].Empty();
-	IndexGrid[position].Add(blockIndex);
-
 
 	//spawn mesh
 	if (Block.MeshId == 0) {
@@ -251,112 +311,5 @@ void AWaveFunctionCollapse::CollapseBlock(const FIntVector& position)
 		}
 
 		InstancedMeshComponents[Block.MeshId]->AddInstance(Transform); //spawn mesh
-	}
-
-	//remove collapsed tile from grid
-	IndexGrid.Remove(position);
-	CollapsedBlocks.Add(position, blockIndex);
-
-	// propagate constraints to neighbors
-	Propagate(position + FIntVector(1, 0, 0));
-	Propagate(position + FIntVector(-1, 0, 0));
-	Propagate(position + FIntVector(0, 1, 0));
-	Propagate(position + FIntVector(0, -1, 0));
-	Propagate(position + FIntVector(0, 0, 1));
-	Propagate(position + FIntVector(0, 0, -1));
-}
-
-void AWaveFunctionCollapse::Propagate(const FIntVector& position)
-{
-	if(!IndexGrid.Contains(position)) return;
-
-	RemoveInvalidBlocks(position, FIntVector(1, 0, 0));
-	RemoveInvalidBlocks(position, FIntVector(-1, 0, 0));
-	RemoveInvalidBlocks(position, FIntVector(0, 1, 0));
-	RemoveInvalidBlocks(position, FIntVector(0, -1, 0));
-	RemoveInvalidBlocks(position, FIntVector(0, 0, 1));
-	RemoveInvalidBlocks(position, FIntVector(0, 0, -1));
-
-	if (IndexGrid[position].IsEmpty()) {
-		IndexGrid.Remove(position);
-		//CollapsedBlocks.Add(position, 0); //empty block
-		UE_LOG(LogTemp, Warning, TEXT("No blocks left at position: %s -> empty block"), *position.ToString());
-	}
-}
-
-void AWaveFunctionCollapse::RemoveInvalidBlocks(const FIntVector& position, const FIntVector& direction)
-{
-	if (!CollapsedBlocks.Contains(position + direction)) return;
-
-	TSet<int> BlocksToRemove = TSet<int>();
-
-	if(direction == FIntVector(1, 0, 0)) 
-	{
-		for (auto Index : IndexGrid[position])
-		{
-			if (Blocks[Index].Right == Blocks[CollapsedBlocks[position + direction]].Left) {
-				continue;
-			}
-			BlocksToRemove.Add(Index);
-		}
-	}
-	else if (direction == FIntVector(-1, 0, 0))
-	{
-		for (auto Index : IndexGrid[position])
-		{
-			if (Blocks[Index].Left == Blocks[CollapsedBlocks[position + direction]].Right) {
-				continue;
-			}
-			BlocksToRemove.Add(Index);
-		}
-	}
-	else if (direction == FIntVector(0, 1, 0))
-	{
-		for (auto Index : IndexGrid[position])
-		{
-			if (Blocks[Index].Front == Blocks[CollapsedBlocks[position + direction]].Back) {
-				continue;
-			}
-			BlocksToRemove.Add(Index);
-		}
-	}
-	else if (direction == FIntVector(0, -1, 0))
-	{
-		for (auto Index : IndexGrid[position])
-		{
-			if (Blocks[Index].Back == Blocks[CollapsedBlocks[position + direction]].Front) {
-				continue;
-			}
-			BlocksToRemove.Add(Index);
-		}
-	}
-	else if (direction == FIntVector(0, 0, 1))
-	{
-		for (auto Index : IndexGrid[position])
-		{
-			if (Blocks[Index].Top == Blocks[CollapsedBlocks[position + direction]].Bottom) {
-				continue;
-			}
-			BlocksToRemove.Add(Index);
-		}
-	}
-	else if (direction == FIntVector(0, 0, -1))
-	{
-		for (auto Index : IndexGrid[position])
-		{
-			if (Blocks[Index].Bottom == Blocks[CollapsedBlocks[position + direction]].Top) {
-				continue;
-			}
-			BlocksToRemove.Add(Index);
-		}
-	}else
-	{
-		UE_LOG(LogTemp, Error, TEXT("Invalid direction"));
-		return;
-	}
-
-	for(auto Index : BlocksToRemove)
-	{
-		IndexGrid[position].Remove(Index);
 	}
 }
