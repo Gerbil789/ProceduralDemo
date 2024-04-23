@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "BlockType.h"
 #include "WFC_Base.generated.h"
 
 UCLASS()
@@ -14,6 +15,9 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WFC_Block")
 	UStaticMesh* Mesh;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WFC_Block")
+    BlockType Type = BlockType::EMPTY;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block_Sockets", Meta = (DisplayName = "Top    (+Z)"))
     FString Top = "TOP";

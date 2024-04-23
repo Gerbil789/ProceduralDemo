@@ -1,91 +1,18 @@
 #include "WaveFunctionCollapse.h"
 
 const TArray<FIntVector> AWaveFunctionCollapse::Directions = { FIntVector(1, 0, 0),FIntVector(-1, 0, 0), FIntVector(0, 1, 0), FIntVector(0, -1, 0), FIntVector(0, 0, 1), FIntVector(0, 0, -1) };
+TArray<WFCBlock> AWaveFunctionCollapse::Blocks;
+FIntVector AWaveFunctionCollapse::Size;
+TMap<FIntVector, WFCBlock> AWaveFunctionCollapse::CollapsedBlocks;
+TMap<FIntVector, TArray<int>> AWaveFunctionCollapse::Grid;
 
-AWaveFunctionCollapse::AWaveFunctionCollapse()
+
+TMap<FIntVector, WFCBlock> AWaveFunctionCollapse::Generate(const TArray<WFCBlock>& blocks, const TMap<FIntVector, WFCBlock>& collapsedBlocks, const FIntVector& size)
 {
-	PrimaryActorTick.bCanEverTick = false;
-	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
-}
-
-void AWaveFunctionCollapse::LoadBlocks()
-{
-	UE_LOG(LogTemp, Warning, TEXT("Loading blocks"));
-	//clear blocks
-	Blocks.Empty();
-
-	CleanUpMesh();
-
-
-	int meshId = 1;
-	for (auto block : BlueprintBlocks)
-	{
-		AWFC_Base& base = *block.Block->GetDefaultObject<AWFC_Base>();
-
-		if (base.Mesh == nullptr) {
-			//empty/fill block
-			auto NewBlock = WFCBlock(0, 0, base.Top, base.Bottom, base.Left, base.Right, base.Front, base.Back, block.Priority);
-			Blocks.Add(NewBlock);
-			continue;
-		}
-
-		if (base.Variants >= 1) {
-			auto NewBlock = WFCBlock(meshId, 0, base.Top, base.Bottom, base.Left, base.Right, base.Front, base.Back, block.Priority);
-			Blocks.Add(NewBlock);
-		}
-
-		if (base.Variants >= 2) {
-			auto NewBlock = WFCBlock(meshId, -90, base.Top, base.Bottom, base.Back, base.Front, base.Left, base.Right, block.Priority);
-			Blocks.Add(NewBlock);
-		}
-
-		if (base.Variants >= 3) {
-			auto NewBlock = WFCBlock(meshId, -180, base.Top, base.Bottom, base.Right, base.Left, base.Back, base.Front, block.Priority);
-			Blocks.Add(NewBlock);
-		}
-
-		if (base.Variants >= 4) {
-			auto NewBlock = WFCBlock(meshId, -270, base.Top, base.Bottom, base.Front, base.Back, base.Right, base.Left, block.Priority);
-			Blocks.Add(NewBlock);
-		}
-
-		//create instanced mesh component
-		UInstancedStaticMeshComponent* NewInstancedMeshComponent = NewObject<UInstancedStaticMeshComponent>(this);
-		NewInstancedMeshComponent->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
-		NewInstancedMeshComponent->SetStaticMesh(base.Mesh);
-		NewInstancedMeshComponent->bUseDefaultCollision = true;
-		NewInstancedMeshComponent->SetVisibility(true, false);
-		InstancedMeshComponents.Add(meshId, NewInstancedMeshComponent);
-
-		meshId++;
-	}
-	UE_LOG(LogTemp, Warning, TEXT("Loaded blocks count: %d"), Blocks.Num());
-}
-
-void AWaveFunctionCollapse::CleanUpMesh()
-{
-	UE_LOG(LogTemp, Warning, TEXT("Cleaning up"));
-
-	IndexGrid.Empty();
-	CollapsedBlocks.Empty();
-
-	for (auto MeshComponent : InstancedMeshComponents)
-	{
-		MeshComponent.Value->ClearInstances();
-	}
-}
-
-void AWaveFunctionCollapse::GenerateMesh()
-{
-	CleanUpMesh();
-
-	if (Blocks.IsEmpty()) {
-		UE_LOG(LogTemp, Error, TEXT("No blocks found"));
-		return;
-	}
-
-	infiniteLoopBreaker = 10000;
-	UE_LOG(LogTemp, Warning, TEXT("Generating mesh"));
+	Grid.Empty();
+	CollapsedBlocks = collapsedBlocks;
+	Blocks = blocks;
+	Size = size;
 
 	//intialize grid
 	for (int X = 0; X < Size.X; X++)
@@ -94,30 +21,35 @@ void AWaveFunctionCollapse::GenerateMesh()
 		{
 			for (int Z = 0; Z < Size.Z; Z++)
 			{
-				TArray<int> IndexArray;
+				if(CollapsedBlocks.Contains(FIntVector(X, Y, Z))) continue;
 
+				TArray<int> BlockArray;
 				for (int i = 0; i < Blocks.Num(); ++i) {
-					IndexArray.Add(i);
+					BlockArray.Add(i);
 				}
-				IndexGrid.Emplace(FIntVector(X, Y, Z), IndexArray);
+				Grid.Emplace(FIntVector(X, Y, Z), BlockArray);
 			}
 		}
 	}
 
-	while (IndexGrid.IsEmpty() == false && IndexGrid.Num() != 0) {
+	for (auto& pair : CollapsedBlocks)
+	{
+		Propagate(pair.Key);
+	}
 
-		if (infiniteLoopBreaker-- <= 0) {
-			UE_LOG(LogTemp, Error, TEXT("Infinite loop detected"));
-			return;
+	int tmp = 0;
+	while (Grid.IsEmpty() == false && Grid.Num() != 0) {
+		if (tmp > 10000) {
+			throw std::runtime_error("Infinite loop detected in generation");
+			return CollapsedBlocks;
 		}
 
 		FIntVector lowestEntropyPosition = GetLowestEntropyPosition();
-
 		Collapse(lowestEntropyPosition);
 		Propagate(lowestEntropyPosition);
 	}
 
-	SpawnBlocks();
+	return CollapsedBlocks;
 }
 
 FIntVector AWaveFunctionCollapse::GetLowestEntropyPosition()
@@ -126,13 +58,12 @@ FIntVector AWaveFunctionCollapse::GetLowestEntropyPosition()
 
 	TSet<FIntVector> LowestEntropySet = TSet<FIntVector>();
 
-	for (auto IndexArray : IndexGrid)
+	for (auto BlockArray : Grid)
 	{
-		int BlockEntropy = IndexArray.Value.Num();
+		int BlockEntropy = BlockArray.Value.Num(); //number of possible blocks at this position
 
 		if (BlockEntropy == 0) {
-			UE_LOG(LogTemp, Error, TEXT("BlockEntropy is 0 at position: %s"), *IndexArray.Key.ToString());
-			IndexGrid.Remove(IndexArray.Key);
+			Grid.Remove(BlockArray.Key);
 			continue;
 		}
 
@@ -141,175 +72,95 @@ FIntVector AWaveFunctionCollapse::GetLowestEntropyPosition()
 		{
 			LowestEntropy = BlockEntropy;
 			LowestEntropySet.Empty();
-			LowestEntropySet.Add(IndexArray.Key);
+			LowestEntropySet.Add(BlockArray.Key);
 		}
 		else if (BlockEntropy == LowestEntropy)
 		{
-			LowestEntropySet.Add(IndexArray.Key);
+			LowestEntropySet.Add(BlockArray.Key);
 		}
 	}
 
-	if (!LowestEntropySet.IsEmpty()) {
-		FIntVector LowestEntropyBlockPosition = LowestEntropySet.Array()[FMath::RandRange(0, LowestEntropySet.Num() - 1)];
-		return LowestEntropyBlockPosition;
+	if (LowestEntropySet.IsEmpty()) {
+		throw std::runtime_error("No lowest entropy set found");
 	}
-	else {
-		return FIntVector(-1, -1, -1);
-	}
-	}
-	
+
+	FIntVector LowestEntropyBlockPosition = LowestEntropySet.Array()[FMath::RandRange(0, LowestEntropySet.Num() - 1)];
+	return LowestEntropyBlockPosition;
+}
+
 void AWaveFunctionCollapse::Collapse(const FIntVector& position)
 {
-	//pick random block from lowest entropy set and remove the rest
-	int blockIndex;
-	if (IndexGrid[position].Num() > 1)
+	int blockId;
+	if (Grid[position].Num() > 1)
 	{
-		int totalPrioritySum = 0;
-		for (auto i : IndexGrid[position]) {
-			totalPrioritySum += Blocks[i].Priority;
+		//make a pool of values, then pick a random one (block with higher priority have more entries in the pool)
+		int pool = 0;
+		for (auto i : Grid[position]) {
+			pool += Blocks[i].Priority;
 		}
-		int randomNumber = FMath::RandRange(0, totalPrioritySum);
+		int randomNumber = FMath::RandRange(0, pool);
 
-		for (auto i : IndexGrid[position]) {
+		for (auto i : Grid[position]) {
 			randomNumber -= Blocks[i].Priority;
 			if (randomNumber <= 0) {
-				blockIndex = i;
+				blockId = i;
 				break;
 			}
 		}
 	}
 	else
 	{
-		blockIndex = IndexGrid[position][0];
+		blockId = Grid[position][0];
 	}
 
-	IndexGrid.Remove(position);
-	CollapsedBlocks.Add(position, blockIndex);
-	CalculatedBlocks.push(std::make_pair(position, blockIndex)); //spawn mesh later
+	Grid.Remove(position);
+	CollapsedBlocks.Add(position, Blocks[blockId]);
 }
 
 void AWaveFunctionCollapse::Propagate(const FIntVector& position)
 {
-	std::stack<FIntVector> Stack;
-	TSet<FIntVector> InStack;
-
-	int tmp = 0;
-	Stack.push(position);
-	InStack.Add(position);
-
-	while (!Stack.empty()) {
-		tmp++;
-		if (tmp > 10000) {
-			UE_LOG(LogTemp, Error, TEXT("Infinite loop detected inside propagation"));
-			return;
-		}
-
-		FIntVector currentPosition = Stack.top();
-		Stack.pop();
-
-
-		for (auto Direction : Directions)
-		{
-			FIntVector newPosition = currentPosition + Direction;
-			if (!IndexGrid.Contains(newPosition) || InStack.Contains(newPosition)) continue;
-
-			TSet<int> blocksToRemove = GetBlocksToRemove(position, Direction);
-			if (blocksToRemove.IsEmpty() || blocksToRemove.Num() == 0) continue;
-
-			if (blocksToRemove.Num() == IndexGrid[newPosition].Num()) {
-				UE_LOG(LogTemp, Error, TEXT("No valid blocks to propagate at position: %s"), *newPosition.ToString());
-				continue;
-			}
-
-
-			for (auto blockIndex : blocksToRemove)
-			{
-				IndexGrid[newPosition].Remove(blockIndex);
-			}
-
-			if (IndexGrid[newPosition].Num() == 0) {
-				UE_LOG(LogTemp, Error, TEXT("No blocks left at position: %s"), *newPosition.ToString());
-				IndexGrid.Remove(newPosition);
-				continue;
-			}
-
-
-			Stack.push(newPosition);
-			InStack.Add(newPosition);
-		}
-
-		InStack.Remove(currentPosition);
-
-	}
-}
-
-TSet<int> AWaveFunctionCollapse::GetBlocksToRemove(const FIntVector& position, const FIntVector& direction)
-{
-	TSet<int> BlocksToRemove;
-	if (CollapsedBlocks.Contains(position + direction)) return BlocksToRemove;
-	if(!IndexGrid.Contains(position + direction)) return BlocksToRemove;
-
-	int CollapsedIndex = CollapsedBlocks[position];
-
-	for (auto Index : IndexGrid[position + direction])
+	for (auto Direction : Directions)
 	{
-		if ((direction.X == 1 && Blocks[CollapsedIndex].Right != Blocks[Index].Left) ||
-			(direction.X == -1 && Blocks[CollapsedIndex].Left != Blocks[Index].Right) ||
-			(direction.Y == 1 && Blocks[CollapsedIndex].Front != Blocks[Index].Back) ||
-			(direction.Y == -1 && Blocks[CollapsedIndex].Back != Blocks[Index].Front) ||
-			(direction.Z == 1 && Blocks[CollapsedIndex].Top != Blocks[Index].Bottom) ||
-			(direction.Z == -1 && Blocks[CollapsedIndex].Bottom != Blocks[Index].Top))
-		{
-			BlocksToRemove.Add(Index);
-		}
+		FIntVector newPosition = position + Direction;
+
+		if (!Grid.Contains(newPosition)) continue;
+
+		RemoveUnvalidBlocks(newPosition, Direction);
 	}
-	return BlocksToRemove;
+
 }
 
-void AWaveFunctionCollapse::SpawnBlocks()
+void AWaveFunctionCollapse::RemoveUnvalidBlocks(const FIntVector& position, const FIntVector& direction)
 {
-	if (Delay == 0) {
-		while (CalculatedBlocks.empty() == false)
-		{
-			auto block = CalculatedBlocks.top();
-			CalculatedBlocks.pop();
-			SpawnMesh(block.first, block.second);
-		}
+	if (!CollapsedBlocks.Contains(position - direction)) return;
+	WFCBlock CollapsedBlock = CollapsedBlocks[position - direction];
+	TSet<int> BlocksToRemove;
 
-	}
-	else {
-		while (CalculatedBlocks.empty() == false)
+	for (const auto& blockId : Grid[position])
+	{
+		if ((direction.X == 1 && CollapsedBlock.Right != Blocks[blockId].Left) ||
+			(direction.X == -1 && CollapsedBlock.Left != Blocks[blockId].Right) ||
+			(direction.Y == 1 && CollapsedBlock.Front != Blocks[blockId].Back) ||
+			(direction.Y == -1 && CollapsedBlock.Back != Blocks[blockId].Front) ||
+			(direction.Z == 1 && CollapsedBlock.Top != Blocks[blockId].Bottom) ||
+			(direction.Z == -1 && CollapsedBlock.Bottom != Blocks[blockId].Top))
 		{
-			auto block = CalculatedBlocks.top();
-			CalculatedBlocks.pop();
-			SpawnMesh(block.first, block.second);
+			BlocksToRemove.Add(blockId);
 		}
+	}
+
+	if (BlocksToRemove.Num() == Grid[position].Num()) {
+		throw std::runtime_error("No valid blocks to propagate");
+	}
+
+	for (auto blockIndex : BlocksToRemove)
+	{
+		Grid[position].Remove(blockIndex);
+	}
+
+	if (Grid[position].Num() == 0) {
+		throw std::runtime_error("No blocks left in grid");
 	}
 }
 
 
-void AWaveFunctionCollapse::SpawnMesh(const FIntVector& position, const int& blockIndex)
-{
-	WFCBlock& Block = Blocks[blockIndex];
-
-	//spawn mesh
-	if (Block.MeshId == 0) {
-		UE_LOG(LogTemp, Warning, TEXT("Spawned empty block"));
-	}
-	else {
-		FVector Location = FVector(position) * Offset - FVector(Size.X * Offset / 2, Size.Y * Offset / 2, -Offset / 2);
-
-		//UE_LOG(LogTemp, Warning, TEXT("SPAWNED STATICMESH_ID: %d | ROT: %d| POS[%d, %d, %d] | RIGHT: %s BACK: %s LEFT: %s FRONT: %s"), Block.MeshId, Block.Rotation, position.X, position.Y, position.Z, *Block.Right.ToString(), *Block.Back.ToString(), *Block.Left.ToString(), *Block.Front.ToString());
-
-		FTransform Transform = FTransform(Location);
-		Transform.SetRotation(FQuat(FRotator(0, Block.Rotation, 0)));
-
-		if (!InstancedMeshComponents.Contains(Block.MeshId))
-		{
-			UE_LOG(LogTemp, Error, TEXT("No instanced mesh component for %d"), Block.MeshId);
-			return;
-		}
-
-		InstancedMeshComponents[Block.MeshId]->AddInstance(Transform); //spawn mesh
-	}
-}

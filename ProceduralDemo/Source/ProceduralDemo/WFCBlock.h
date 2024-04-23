@@ -1,5 +1,6 @@
 #pragma once
 #include "CoreMinimal.h"
+#include "WFC_Base.h"
 
 struct FWFCSocket
 {
@@ -86,34 +87,54 @@ struct FWFCSocketVertical : public FWFCSocket
 	}
 };
 
-
 class WFCBlock
 {
 public:
 	int MeshId;
 	int Rotation = 0;
-
+	int Priority = 1;
+	
+	FWFCSocketVertical Top;
+	FWFCSocketVertical Bottom;
 	FWFCSocketHorizontal Left;
 	FWFCSocketHorizontal Right;
 	FWFCSocketHorizontal Front;
 	FWFCSocketHorizontal Back;
+	BlockType Type = BlockType::EMPTY;
 
-	FWFCSocketVertical Top;
-	FWFCSocketVertical Bottom;
-
-	int Priority = 1;
-
-	WFCBlock(const int& meshId, const int& rotation, const FString& top, const FString& bottom, const FString& left, const FString& right, const FString& front, const FString& back, const int& priority) :
+	WFCBlock(const int& meshId, const int& rotation, const int& priority, const AWFC_Base& base) :
 		MeshId(meshId),
 		Rotation(rotation),
-		Top(ParseVertical(top, rotation)),
-		Bottom(ParseVertical(bottom, rotation)),
-		Left(ParseHorizontal(left)),
-		Right(ParseHorizontal(right)),
-		Front(ParseHorizontal(front)),
-		Back(ParseHorizontal(back)),
-		Priority(priority)
-	{}
+		Priority(priority),
+		Top(ParseVertical(base.Top, rotation)),
+		Bottom(ParseVertical(base.Bottom, rotation)),
+		Type(base.Type)
+	{
+		if (rotation == 0) {
+			Left = ParseHorizontal(base.Left);
+			Right = ParseHorizontal(base.Right);
+			Front = ParseHorizontal(base.Front);
+			Back = ParseHorizontal(base.Back);
+		}
+		else if (rotation == -90) {
+			Left = ParseHorizontal(base.Back);
+			Right = ParseHorizontal(base.Front);
+			Front = ParseHorizontal(base.Left);
+			Back = ParseHorizontal(base.Right);
+		}
+		else if (rotation == -180) {
+			Left = ParseHorizontal(base.Right);
+			Right = ParseHorizontal(base.Left);
+			Front = ParseHorizontal(base.Back);
+			Back = ParseHorizontal(base.Front);
+		}
+		else if (rotation == -270) {
+			Left = ParseHorizontal(base.Front);
+			Right = ParseHorizontal(base.Back);
+			Front = ParseHorizontal(base.Right);
+			Back = ParseHorizontal(base.Left);
+		}
+	}
 
 	static FWFCSocketHorizontal ParseHorizontal(const FString& str)
 	{
@@ -155,6 +176,18 @@ public:
 		str += Top.ToString() + TEXT(" Bottom: ") + Bottom.ToString() + TEXT(" Left: ");
 		str += Left.ToString() + TEXT(" Right: ") + Right.ToString() + TEXT(" Front: ") + Front.ToString() + TEXT(" Back: ") + Back.ToString();
 		return str;
+	}
+
+	bool operator==(const WFCBlock& other) const
+	{
+		return MeshId == other.MeshId && 
+			Rotation == other.Rotation &&
+			Top == other.Top && 
+			Bottom == other.Bottom &&
+			Left == other.Left &&
+			Right == other.Right &&
+			Front == other.Front && 
+			Back == other.Back;
 	}
 };
 	
