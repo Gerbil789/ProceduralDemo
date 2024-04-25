@@ -1,7 +1,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "WaveFunctionCollapse.h"
 #include "ModuleBase.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "GameFramework/Actor.h"

@@ -139,7 +139,7 @@ public:
 
 		Name = Utility::CleanName(base.GetName());
 
-		UE_LOG(LogTemp, Warning, TEXT("Block name: %s"), *Name);
+		//UE_LOG(LogTemp, Warning, TEXT("Block name: %s"), *Name);
 	}
 
 	static FWFCSocketHorizontal ParseHorizontal(const FString& str)

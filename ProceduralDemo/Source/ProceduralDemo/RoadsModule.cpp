@@ -13,6 +13,7 @@ void ARoadsModule::Process(TMap<FIntVector, WFCBlock>& determinedBlocks, const T
 	}
 
 	if (roadBlocks.Num() == 0) throw std::runtime_error("No road blocks found");
+	//UE_LOG(LogTemp, Warning, TEXT("Road blocks: %d"), roadBlocks.Num());
 
 	TSet<FIntVector> AvailablePositions;
 	for (int x = 0; x < Size.X; x++) {

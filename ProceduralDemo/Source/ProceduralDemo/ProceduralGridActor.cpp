@@ -91,8 +91,22 @@ void AProceduralGridActor::GenerateMesh()
 			AModuleBase& Module = *ModuleClass->GetDefaultObject<AModuleBase>();
 			FString ModuleName = Utility::CleanName(Module.GetName());
 			UE_LOG(LogTemp, Warning, TEXT("Processing %s"), *ModuleName);
-			Module.Process( DeterminedBlocks, AllBlocks, Size);
-			UE_LOG(LogTemp, Warning, TEXT("%s finished (total blocks: %d)"), *ModuleName, DeterminedBlocks.Num());
+			int maxAttempts = 5000;
+			int attempt = 0;
+			while(attempt < maxAttempts)
+			{
+				try {
+					Module.Process(DeterminedBlocks, AllBlocks, Size);
+					break;
+				}
+				catch (const std::exception&) {
+					attempt++;
+				}
+			}
+
+			if(attempt >= maxAttempts) throw std::runtime_error("Failed to process module (5000 attempts failed)");
+
+			UE_LOG(LogTemp, Warning, TEXT("%s finished (total blocks: %d) (Attempt: %d)"), *ModuleName, DeterminedBlocks.Num(), attempt);
 		}
 
 
@@ -106,42 +120,7 @@ void AProceduralGridActor::GenerateMesh()
 	catch (const std::exception& e) {
 		UE_LOG(LogTemp, Error, TEXT("Exception: %s"), UTF8_TO_TCHAR(e.what()));
 	}
-
-
-
-	//int attempt = 0;
-	//bool success = false;
-
-	//UE_LOG(LogTemp, Warning, TEXT("Generating ..."));
-	//while (attempt < 10 && !success) {
-	//	try {
-	//		attempt++;
-	//		UE_LOG(LogTemp, Warning, TEXT("Attempt %d"), attempt);
-
-	//		TMap<FIntVector, WFCBlock> Roads = RoadGenerator::GenerateRoads(RoadBlocks, Size);
-	//		TMap<FIntVector, WFCBlock> BlocksToSpawn = AWaveFunctionCollapse::Generate(BuildingBlocks, Roads, Size);
-
-	//		UE_LOG(LogTemp, Warning, TEXT("Spawning mesh"));
-	//		for (auto& pair : BlocksToSpawn)
-	//		{
-	//			SpawnMesh(pair.Key, pair.Value);
-	//		}
-	//		success = true;
-	//	}
-	//	catch (const std::exception& e) {
-	//		UE_LOG(LogTemp, Error, TEXT("Exception: %s"), UTF8_TO_TCHAR(e.what()));
-	//	}
-	//}
-
-
-
-
-
-
 }
-
-
-
 
 
 void AProceduralGridActor::SpawnMesh(const FIntVector& position, const WFCBlock& block)

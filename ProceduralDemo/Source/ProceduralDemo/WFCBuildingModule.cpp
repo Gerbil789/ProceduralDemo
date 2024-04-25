@@ -1,27 +1,31 @@
-#include "WaveFunctionCollapse.h"
+#include "WFCBuildingModule.h"
 
-const TArray<FIntVector> AWaveFunctionCollapse::Directions = { FIntVector(1, 0, 0),FIntVector(-1, 0, 0), FIntVector(0, 1, 0), FIntVector(0, -1, 0), FIntVector(0, 0, 1), FIntVector(0, 0, -1) };
-TArray<WFCBlock> AWaveFunctionCollapse::Blocks;
-FIntVector AWaveFunctionCollapse::Size;
-TMap<FIntVector, WFCBlock> AWaveFunctionCollapse::CollapsedBlocks;
-TMap<FIntVector, TArray<int>> AWaveFunctionCollapse::Grid;
-
-
-TMap<FIntVector, WFCBlock> AWaveFunctionCollapse::Generate(const TArray<WFCBlock>& blocks, const TMap<FIntVector, WFCBlock>& collapsedBlocks, const FIntVector& size)
+void AWFCBuildingModule::Process(TMap<FIntVector, WFCBlock>& determinedBlocks, const TArray<WFCBlock>& blocks, const FIntVector& size)
 {
-	Grid.Empty();
-	CollapsedBlocks = collapsedBlocks;
-	Blocks = blocks;
-	Size = size;
+	// get subset of blocks with building type
+	TArray<WFCBlock> buildingBlokcs;
+	for (const WFCBlock& block : blocks) {
+		if (block.Type != BlockType::ROAD) {
+			buildingBlokcs.Add(block);
+		}
+	}
 
-	//intialize grid
+	if (buildingBlokcs.Num() == 0) throw std::runtime_error("No building blocks found");
+	//UE_LOG(LogTemp, Warning, TEXT("Building blocks: %d"), buildingBlokcs.Num())
+
+	Grid = TMap<FIntVector, TArray<int>>();
+	DeterminedBlocks = determinedBlocks;
+	Size = size;
+	Blocks = buildingBlokcs;
+
+	//intialize grid (easy to check if the position is in bounds)
 	for (int X = 0; X < Size.X; X++)
 	{
 		for (int Y = 0; Y < Size.Y; Y++)
 		{
 			for (int Z = 0; Z < Size.Z; Z++)
 			{
-				if(CollapsedBlocks.Contains(FIntVector(X, Y, Z))) continue;
+				if (DeterminedBlocks.Contains(FIntVector(X, Y, Z))) continue;
 
 				TArray<int> BlockArray;
 				for (int i = 0; i < Blocks.Num(); ++i) {
@@ -32,27 +36,67 @@ TMap<FIntVector, WFCBlock> AWaveFunctionCollapse::Generate(const TArray<WFCBlock
 		}
 	}
 
-	for (auto& pair : CollapsedBlocks)
+	/*for (int X = -1; X <= Size.X; X++)
+	{
+		for (int Y = -1; Y <= Size.Y; Y++)
+		{
+			for (int Z = 0; Z <= Size.Z; Z++)
+			{
+				if (X == -1 || Y == -1 || X == Size.X || Y == Size.Y)
+				{
+					if (Z == 0) {
+						DeterminedBlocks.Add(FIntVector(X, Y, Z), Blocks[2]);
+					}
+					else {
+						DeterminedBlocks.Add(FIntVector(X, Y, Z), Blocks[0]);
+					}
+
+					
+				}
+
+				
+			}
+		}
+	}*/
+
+	for(int X = 0; X < Size.X; X++)
+	{
+		for (int Y = 0; Y < Size.Y; Y++)
+		{
+			DeterminedBlocks.Add(FIntVector(X, Y, Size.Z), Blocks[0]);
+			DeterminedBlocks.Add(FIntVector(X, Y, -1), Blocks[1]);
+		}
+	}
+
+
+	for (auto& pair : DeterminedBlocks)
 	{
 		Propagate(pair.Key);
 	}
 
-	int tmp = 0;
+	//collapse
+	int infiniteLoopDetector = 0;
 	while (Grid.IsEmpty() == false && Grid.Num() != 0) {
-		if (tmp > 10000) {
-			throw std::runtime_error("Infinite loop detected in generation");
-			return CollapsedBlocks;
-		}
+		if (infiniteLoopDetector > 10000) throw std::runtime_error("Infinite loop detected in generation");
 
 		FIntVector lowestEntropyPosition = GetLowestEntropyPosition();
 		Collapse(lowestEntropyPosition);
 		Propagate(lowestEntropyPosition);
 	}
 
-	return CollapsedBlocks;
+	for (int X = 0; X < Size.X; X++)
+	{
+		for (int Y = 0; Y < Size.Y; Y++)
+		{
+			DeterminedBlocks.Remove(FIntVector(X, Y, Size.Z));
+			DeterminedBlocks.Remove(FIntVector(X, Y, -1));
+		}
+	}
+
+	determinedBlocks = DeterminedBlocks;
 }
 
-FIntVector AWaveFunctionCollapse::GetLowestEntropyPosition()
+FIntVector AWFCBuildingModule::GetLowestEntropyPosition()
 {
 	int LowestEntropy = TNumericLimits<int32>::Max();
 
@@ -64,6 +108,7 @@ FIntVector AWaveFunctionCollapse::GetLowestEntropyPosition()
 
 		if (BlockEntropy == 0) {
 			Grid.Remove(BlockArray.Key);
+			UE_LOG(LogTemp, Warning, TEXT("Block at %s has no possible blocks"), *BlockArray.Key.ToString())
 			continue;
 		}
 
@@ -88,7 +133,7 @@ FIntVector AWaveFunctionCollapse::GetLowestEntropyPosition()
 	return LowestEntropyBlockPosition;
 }
 
-void AWaveFunctionCollapse::Collapse(const FIntVector& position)
+void AWFCBuildingModule::Collapse(const FIntVector& position)
 {
 	int blockId;
 	if (Grid[position].Num() > 1)
@@ -114,10 +159,10 @@ void AWaveFunctionCollapse::Collapse(const FIntVector& position)
 	}
 
 	Grid.Remove(position);
-	CollapsedBlocks.Add(position, Blocks[blockId]);
+	DeterminedBlocks.Add(position, Blocks[blockId]);
 }
 
-void AWaveFunctionCollapse::Propagate(const FIntVector& position)
+void AWFCBuildingModule::Propagate(const FIntVector& position)
 {
 	for (auto Direction : Directions)
 	{
@@ -125,15 +170,14 @@ void AWaveFunctionCollapse::Propagate(const FIntVector& position)
 
 		if (!Grid.Contains(newPosition)) continue;
 
-		RemoveUnvalidBlocks(newPosition, Direction);
+		RemoveInvalidBlocks(newPosition, Direction);
 	}
-
 }
 
-void AWaveFunctionCollapse::RemoveUnvalidBlocks(const FIntVector& position, const FIntVector& direction)
+void AWFCBuildingModule::RemoveInvalidBlocks(const FIntVector& position, const FIntVector& direction)
 {
-	if (!CollapsedBlocks.Contains(position - direction)) return;
-	WFCBlock CollapsedBlock = CollapsedBlocks[position - direction];
+	if (!DeterminedBlocks.Contains(position - direction)) return;
+	WFCBlock CollapsedBlock = DeterminedBlocks[position - direction];
 	TSet<int> BlocksToRemove;
 
 	for (const auto& blockId : Grid[position])
@@ -162,5 +206,3 @@ void AWaveFunctionCollapse::RemoveUnvalidBlocks(const FIntVector& position, cons
 		throw std::runtime_error("No blocks left in grid");
 	}
 }
-
-
