@@ -1,5 +1,5 @@
 #include "ProceduralGridActor.h"
-#include "RoadGenerator.h"
+#include "Utility.h"
 
 AProceduralGridActor::AProceduralGridActor()
 {
@@ -9,9 +9,21 @@ AProceduralGridActor::AProceduralGridActor()
 
 void AProceduralGridActor::LoadBlocks()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Loading blocks"));
-	Blocks.Empty();
+	UE_LOG(LogTemp, Warning, TEXT("Loading blocks..."));
 	CleanUpMesh();
+	AllBlocks.Empty();
+
+	if (BlueprintBlocks.Num() == 0)
+	{
+		throw std::runtime_error("No blocks to load");
+	}
+
+	for (auto block : BlueprintBlocks) {
+		if (block.Block == nullptr)
+		{
+			throw std::runtime_error("Empty block detected");
+		}
+	}
 
 	int meshId = 1;
 	for (auto block : BlueprintBlocks)
@@ -19,30 +31,14 @@ void AProceduralGridActor::LoadBlocks()
 		AWFC_Base& base = *block.Block->GetDefaultObject<AWFC_Base>();
 
 		if (base.Mesh == nullptr) {
-			//empty/fill block
-			auto NewBlock = WFCBlock(0, 0, block.Priority, base);
-			Blocks.Add(NewBlock);
+			AllBlocks.Add(WFCBlock(0, 0, block.Priority, base)); //empty block
 			continue;
 		}
 
-		if (base.Variants >= 1) {
-			auto NewBlock = WFCBlock(meshId, 0, block.Priority, base);
-			Blocks.Add(NewBlock);
-		}
-
-		if (base.Variants >= 2) {
-			auto NewBlock = WFCBlock(meshId, -90, block.Priority, base);
-			Blocks.Add(NewBlock);
-		}
-
-		if (base.Variants >= 3) {
-			auto NewBlock = WFCBlock(meshId, -180, block.Priority, base);
-			Blocks.Add(NewBlock);
-		}
-
-		if (base.Variants >= 4) {
-			auto NewBlock = WFCBlock(meshId, -270, block.Priority, base);
-			Blocks.Add(NewBlock);
+		for (int rotation = 0; rotation < base.Variants; rotation++)
+		{
+			int angle = rotation * -90;
+			AllBlocks.Add(WFCBlock(meshId, angle, block.Priority, base));
 		}
 
 		//create instanced mesh component
@@ -55,7 +51,7 @@ void AProceduralGridActor::LoadBlocks()
 
 		meshId++;
 	}
-	UE_LOG(LogTemp, Warning, TEXT("Loaded blocks count: %d"), Blocks.Num());
+	UE_LOG(LogTemp, Warning, TEXT("Loaded blocks count: %d"), AllBlocks.Num());
 }
 
 void AProceduralGridActor::CleanUpMesh()
@@ -66,62 +62,80 @@ void AProceduralGridActor::CleanUpMesh()
 	{
 		MeshComponent.Value->ClearInstances();
 	}
+	DeterminedBlocks.Empty();
 }
 
 void AProceduralGridActor::GenerateMesh()
 {
-	CleanUpMesh();
+	try {
+		UE_LOG(LogTemp, Warning, TEXT("-----------------------GENERATING MESH-----------------------"));
+		CleanUpMesh();
 
-	if (Blocks.IsEmpty()) {
-		UE_LOG(LogTemp, Error, TEXT("No blocks found"));
-		return;
-	}
+		//Load blocks
+		if (AllBlocks.IsEmpty()) {
+			UE_LOG(LogTemp, Warning, TEXT("No blocks found"));
+			LoadBlocks();
+		}
 
-	TArray<WFCBlock> RoadBlocks; //road blocks subset
-	for (auto block : Blocks)
-	{
-		if (block.Type == BlockType::ROAD)
+		//Check modules
+		if (ModuleClasses.IsEmpty()) throw std::runtime_error("No modules found");
+
+
+		for (auto ModuleClass : ModuleClasses) {
+			if (ModuleClass == nullptr) throw std::runtime_error("Empty module detected");
+		}
+
+		//Process modules
+		for (auto ModuleClass : ModuleClasses)
 		{
-			RoadBlocks.Add(block);
+			AModuleBase& Module = *ModuleClass->GetDefaultObject<AModuleBase>();
+			FString ModuleName = Utility::CleanName(Module.GetName());
+			UE_LOG(LogTemp, Warning, TEXT("Processing %s"), *ModuleName);
+			Module.Process( DeterminedBlocks, AllBlocks, Size);
+			UE_LOG(LogTemp, Warning, TEXT("%s finished (total blocks: %d)"), *ModuleName, DeterminedBlocks.Num());
 		}
-	}
 
-	TArray<WFCBlock> BuildingBlocks; //building blocks subset
-	for (auto block : Blocks)
-	{
-		if (block.Type != BlockType::ROAD)
+
+		//Spawn mesh
+		UE_LOG(LogTemp, Warning, TEXT("Spawning mesh (%d blocks)"), DeterminedBlocks.Num());
+		for (auto& pair : DeterminedBlocks)
 		{
-			BuildingBlocks.Add(block);
+			SpawnMesh(pair.Key, pair.Value);
 		}
 	}
-
-	int attempt = 0;
-	bool success = false;
-
-	UE_LOG(LogTemp, Warning, TEXT("Generating ..."));
-	while (attempt < 10 && !success) {
-		try {
-			attempt++;
-			UE_LOG(LogTemp, Warning, TEXT("Attempt %d"), attempt);
-
-			TMap<FIntVector, WFCBlock> Roads = RoadGenerator::GenerateRoads(RoadBlocks, Size);
-			TMap<FIntVector, WFCBlock> BlocksToSpawn = AWaveFunctionCollapse::Generate(BuildingBlocks, Roads, Size);
-
-			UE_LOG(LogTemp, Warning, TEXT("Spawning mesh"));
-			for (auto& pair : BlocksToSpawn)
-			{
-				SpawnMesh(pair.Key, pair.Value);
-			}
-			success = true;
-		}
-		catch (const std::exception& e) {
-			UE_LOG(LogTemp, Error, TEXT("Exception: %s"), UTF8_TO_TCHAR(e.what()));
-		}
+	catch (const std::exception& e) {
+		UE_LOG(LogTemp, Error, TEXT("Exception: %s"), UTF8_TO_TCHAR(e.what()));
 	}
 
-	
 
-		
+
+	//int attempt = 0;
+	//bool success = false;
+
+	//UE_LOG(LogTemp, Warning, TEXT("Generating ..."));
+	//while (attempt < 10 && !success) {
+	//	try {
+	//		attempt++;
+	//		UE_LOG(LogTemp, Warning, TEXT("Attempt %d"), attempt);
+
+	//		TMap<FIntVector, WFCBlock> Roads = RoadGenerator::GenerateRoads(RoadBlocks, Size);
+	//		TMap<FIntVector, WFCBlock> BlocksToSpawn = AWaveFunctionCollapse::Generate(BuildingBlocks, Roads, Size);
+
+	//		UE_LOG(LogTemp, Warning, TEXT("Spawning mesh"));
+	//		for (auto& pair : BlocksToSpawn)
+	//		{
+	//			SpawnMesh(pair.Key, pair.Value);
+	//		}
+	//		success = true;
+	//	}
+	//	catch (const std::exception& e) {
+	//		UE_LOG(LogTemp, Error, TEXT("Exception: %s"), UTF8_TO_TCHAR(e.what()));
+	//	}
+	//}
+
+
+
+
 
 
 }
@@ -132,9 +146,8 @@ void AProceduralGridActor::GenerateMesh()
 
 void AProceduralGridActor::SpawnMesh(const FIntVector& position, const WFCBlock& block)
 {
-	//spawn mesh
 	if (block.MeshId == 0) {
-		UE_LOG(LogTemp, Warning, TEXT("Spawned empty block"));
+		//UE_LOG(LogTemp, Warning, TEXT("Spawned empty block"));
 		return;
 	}
 
@@ -150,5 +163,4 @@ void AProceduralGridActor::SpawnMesh(const FIntVector& position, const WFCBlock&
 	}
 
 	InstancedMeshComponents[block.MeshId]->AddInstance(Transform); //spawn mesh
-	
 }

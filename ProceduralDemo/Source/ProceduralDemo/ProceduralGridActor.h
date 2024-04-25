@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "WaveFunctionCollapse.h"
+#include "ModuleBase.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "GameFramework/Actor.h"
 #include "ProceduralGridActor.generated.h"
@@ -27,27 +28,33 @@ class PROCEDURALDEMO_API AProceduralGridActor : public AActor
 public:	
 	AProceduralGridActor();
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WFC")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     FIntVector Size;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WFC")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float Delay = 0.01f;
 
-    UFUNCTION(BlueprintCallable, Category = "WFC")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Modules")
+    TArray<TSubclassOf<AModuleBase>> ModuleClasses;
+
+    UFUNCTION(BlueprintCallable)
     void GenerateMesh();
 
-    UFUNCTION(BlueprintCallable, Category = "WFC")
+    UFUNCTION(BlueprintCallable)
     void CleanUpMesh();
 
-    UFUNCTION(BlueprintCallable, Category = "WFC_Blocks")
+    UFUNCTION(BlueprintCallable)
     void LoadBlocks();
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WFC_Blocks")
-    TArray<FBlockWithPriority> BlueprintBlocks; //block types (input)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blocks")
+    TArray<FBlockWithPriority> BlueprintBlocks; 
 private:
-    TArray<WFCBlock> Blocks; //all block types (with rotations)
+    TMap<FIntVector, WFCBlock> DeterminedBlocks;
+    TArray<WFCBlock> AllBlocks;                     //all block types (with rotations)
     int Offset = 200;
-    FTimerHandle DelayHandle;
+   // FTimerHandle DelayHandle;
     TMap<int, UInstancedStaticMeshComponent*> InstancedMeshComponents = TMap<int, UInstancedStaticMeshComponent*>();
+
+
     void SpawnMesh(const FIntVector& position, const WFCBlock& block);
 };
