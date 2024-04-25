@@ -33,11 +33,7 @@ void ARoadsModule::Process(TMap<FIntVector, WFCBlock>& determinedBlocks, const T
 
 		if (DeterminedBlocks.Contains(current)) continue;
 
-		TArray<WFCBlock> roadBlocksCopy;
-		for (auto block : roadBlocks) {
-			roadBlocksCopy.Add(block);
-		}
-
+		TArray<WFCBlock> roadBlocksCopy = roadBlocks;
 		
 		WFCBlock block = GetRandomBlock(roadBlocksCopy);
 

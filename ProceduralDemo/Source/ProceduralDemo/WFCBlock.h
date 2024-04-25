@@ -1,5 +1,6 @@
 #pragma once
 #include "CoreMinimal.h"
+#include "Utility.h"
 #include "WFC_Base.h"
 
 struct FWFCSocket
@@ -93,6 +94,7 @@ public:
 	int MeshId;
 	int Rotation = 0;
 	int Priority = 1;
+	FString Name;
 	
 	FWFCSocketVertical Top;
 	FWFCSocketVertical Bottom;
@@ -134,6 +136,10 @@ public:
 			Front = ParseHorizontal(base.Right);
 			Back = ParseHorizontal(base.Left);
 		}
+
+		Name = Utility::CleanName(base.GetName());
+
+		UE_LOG(LogTemp, Warning, TEXT("Block name: %s"), *Name);
 	}
 
 	static FWFCSocketHorizontal ParseHorizontal(const FString& str)
