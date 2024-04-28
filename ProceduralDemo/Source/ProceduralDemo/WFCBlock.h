@@ -14,7 +14,7 @@ struct FWFCSocketHorizontal : public FWFCSocket
 	bool Symmetric;
 	bool Flipped;
 
-	FWFCSocketHorizontal() : Connector(0), Symmetric(false), Flipped(false) {}
+	FWFCSocketHorizontal() : Connector(-1), Symmetric(false), Flipped(false) {}
 
 	bool operator==(const FWFCSocketHorizontal& other) const
 	{
@@ -59,7 +59,7 @@ struct FWFCSocketVertical : public FWFCSocket
 	bool IrelevantRotation;
 	int Rotation;
 
-	FWFCSocketVertical() : Connector(0), IrelevantRotation(false), Rotation(0) {}
+	FWFCSocketVertical() : Connector(-1), IrelevantRotation(false), Rotation(0) {}
 
 	bool operator==(const FWFCSocketVertical& other) const
 	{
@@ -91,18 +91,20 @@ struct FWFCSocketVertical : public FWFCSocket
 class WFCBlock
 {
 public:
-	int MeshId;
+	int MeshId = 0;
 	int Rotation = 0;
 	int Priority = 1;
-	FString Name;
+	FString Name = "";
 	
-	FWFCSocketVertical Top;
-	FWFCSocketVertical Bottom;
-	FWFCSocketHorizontal Left;
-	FWFCSocketHorizontal Right;
-	FWFCSocketHorizontal Front;
-	FWFCSocketHorizontal Back;
+	FWFCSocketVertical Top = FWFCSocketVertical();
+	FWFCSocketVertical Bottom = FWFCSocketVertical();
+	FWFCSocketHorizontal Left = FWFCSocketHorizontal();
+	FWFCSocketHorizontal Right = FWFCSocketHorizontal();
+	FWFCSocketHorizontal Front = FWFCSocketHorizontal();
+	FWFCSocketHorizontal Back = FWFCSocketHorizontal();
 	BlockType Type = BlockType::EMPTY;
+
+	WFCBlock() {};
 
 	WFCBlock(const int& meshId, const int& rotation, const int& priority, const AWFC_Base& base) :
 		MeshId(meshId),

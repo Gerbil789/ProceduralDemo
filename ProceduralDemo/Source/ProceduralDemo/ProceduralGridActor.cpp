@@ -100,6 +100,7 @@ void AProceduralGridActor::GenerateMesh()
 					break;
 				}
 				catch (const std::exception&) {
+					//UE_LOG(LogTemp, Error, TEXT("Exception: %s"), UTF8_TO_TCHAR(e.what()));
 					attempt++;
 				}
 			}
@@ -109,13 +110,9 @@ void AProceduralGridActor::GenerateMesh()
 			UE_LOG(LogTemp, Warning, TEXT("%s finished (total blocks: %d) (Attempt: %d)"), *ModuleName, DeterminedBlocks.Num(), attempt);
 		}
 
-
 		//Spawn mesh
 		UE_LOG(LogTemp, Warning, TEXT("Spawning mesh (%d blocks)"), DeterminedBlocks.Num());
-		for (auto& pair : DeterminedBlocks)
-		{
-			SpawnMesh(pair.Key, pair.Value);
-		}
+		SpawnMesh();
 	}
 	catch (const std::exception& e) {
 		UE_LOG(LogTemp, Error, TEXT("Exception: %s"), UTF8_TO_TCHAR(e.what()));
@@ -123,13 +120,27 @@ void AProceduralGridActor::GenerateMesh()
 }
 
 
-void AProceduralGridActor::SpawnMesh(const FIntVector& position, const WFCBlock& block)
+void AProceduralGridActor::SpawnMesh()
 {
-	if (block.MeshId == 0) {
-		//UE_LOG(LogTemp, Warning, TEXT("Spawned empty block"));
-		return;
-	}
+	//for (auto& pair : DeterminedBlocks)
+	//{
+	//	SpawnBlock(pair.Key, pair.Value);
+	//}
+	if (DeterminedBlocks.IsEmpty()) return;
 
+	auto pair = *DeterminedBlocks.begin();
+	SpawnBlock(pair.Key, pair.Value);
+	DeterminedBlocks.Remove(pair.Key);
+
+	GetWorldTimerManager().SetTimer(DelayHandle, this, &AProceduralGridActor::SpawnMesh, Delay, false);
+}
+
+
+
+void AProceduralGridActor::SpawnBlock(const FIntVector& position, const WFCBlock& block)
+{
+	if (block.MeshId == 0) return;
+	
 	FVector Location = FVector(position) * Offset - FVector(Size.X * Offset / 2, Size.Y * Offset / 2, -Offset / 2);
 
 	FTransform Transform = FTransform(Location);
@@ -142,4 +153,6 @@ void AProceduralGridActor::SpawnMesh(const FIntVector& position, const WFCBlock&
 	}
 
 	InstancedMeshComponents[block.MeshId]->AddInstance(Transform); //spawn mesh
+
+	
 }

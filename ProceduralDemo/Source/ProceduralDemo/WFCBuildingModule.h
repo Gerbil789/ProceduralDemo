@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include <stack>
 #include "ModuleBase.h"
 #include "WFCBuildingModule.generated.h"
 
@@ -22,10 +23,13 @@ private:
 	};
 
 	TMap<FIntVector, TArray<int>> Grid;
+	std::stack<FIntVector> Wave;
+	TSet<FIntVector> InWave;
 
 	FIntVector GetLowestEntropyPosition();
+	TArray<FIntVector> GetNeighbors(const FIntVector& position);
+	WFCBlock PickBlock(const FIntVector& position);
 	void Collapse(const FIntVector& position);
 	void Propagate(const FIntVector& position);
-	void RemoveInvalidBlocks(const FIntVector& position, const FIntVector& direction);
-	
+	TSet<int> GetIncompatibleBlocks(const FIntVector& position);
 };

@@ -51,9 +51,9 @@ private:
     TMap<FIntVector, WFCBlock> DeterminedBlocks;
     TArray<WFCBlock> AllBlocks;                     //all block types (with rotations)
     int Offset = 200;
-   // FTimerHandle DelayHandle;
+    FTimerHandle DelayHandle;
     TMap<int, UInstancedStaticMeshComponent*> InstancedMeshComponents = TMap<int, UInstancedStaticMeshComponent*>();
 
-
-    void SpawnMesh(const FIntVector& position, const WFCBlock& block);
+    void SpawnMesh();
+    void SpawnBlock(const FIntVector& position, const WFCBlock& block);
 };
