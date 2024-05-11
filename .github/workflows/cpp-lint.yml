@@ -1,0 +1,21 @@
+name: C++ Linting
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    name: Lint C++ Code
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install LLVM/Clang
+      run: |
+        sudo apt-get update
+        sudo apt-get install llvm clang clang-tidy
+
+    - name: Run Clang-Tidy
+      run: |
+        find . -name '*.cpp' | xargs clang-tidy -p . --extra-arg='-Wno-unknown-warning-option'
