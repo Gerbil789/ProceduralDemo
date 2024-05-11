@@ -9,49 +9,68 @@ AProceduralGridActor::AProceduralGridActor()
 
 void AProceduralGridActor::LoadBlocks()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Loading blocks..."));
 	CleanUpMesh();
-	AllBlocks.Empty();
-
-	if (BlueprintBlocks.Num() == 0)
-	{
-		throw std::runtime_error("No blocks to load");
-	}
-
-	for (auto block : BlueprintBlocks) {
-		if (block.Block == nullptr)
-		{
-			throw std::runtime_error("Empty block detected");
-		}
-	}
-
+	UE_LOG(LogTemp, Warning, TEXT("Loading blocks..."));
+	Blocks.Empty();
 	int meshId = 1;
-	for (auto block : BlueprintBlocks)
+
+	for (auto module : Modules)
 	{
-		AWFC_Base& base = *block.Block->GetDefaultObject<AWFC_Base>();
+		AModuleBase& Module = *module->GetDefaultObject<AModuleBase>();
+		FString ModuleName = Utility::CleanName(*Module.GetName()); //clean module name from engine garbage
+		UE_LOG(LogTemp, Warning, TEXT("Loading blocks from %s"), *ModuleName);
+		if(Module.BlueprintBlocks.Num() == 0) UE_LOG(LogTemp, Error, TEXT("No blocks found in %s"), *ModuleName);
+		
+		TArray<int> ModuleIndices;
 
-		if (base.Mesh == nullptr) {
-			AllBlocks.Add(WFCBlock(0, 0, block.Priority, base)); //empty block
-			continue;
-		}
 
-		for (int rotation = 0; rotation < base.Variants; rotation++)
+		for (auto block : Module.BlueprintBlocks)
 		{
-			int angle = rotation * -90;
-			AllBlocks.Add(WFCBlock(meshId, angle, block.Priority, base));
+			if (block.Block == nullptr) UE_LOG(LogTemp, Error, TEXT("Empty block in %s"), *ModuleName);
+
+			ABlockActor& blockActor = *block.Block->GetDefaultObject<ABlockActor>();
+
+			if (blockActor.Mesh == nullptr) {
+				int index = Blocks.AddUnique(Block(0, 0, block.Priority, blockActor));
+				ModuleIndices.Add(index);
+				continue;
+			}
+
+			for (int rotation = 0; rotation < blockActor.Variants; rotation++)
+			{
+				int angle = rotation * -90;
+				int index = Blocks.AddUnique(Block(meshId, angle, block.Priority, blockActor));
+				ModuleIndices.Add(index);
+			}
+
+			//create instanced mesh component
+			UInstancedStaticMeshComponent* NewInstancedMeshComponent = NewObject<UInstancedStaticMeshComponent>(this);
+			NewInstancedMeshComponent->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+			NewInstancedMeshComponent->SetStaticMesh(blockActor.Mesh);
+			NewInstancedMeshComponent->bUseDefaultCollision = true;
+			NewInstancedMeshComponent->SetVisibility(true, true);
+			InstancedMeshComponents.Add(meshId, NewInstancedMeshComponent);
+
+			meshId++;
 		}
 
-		//create instanced mesh component
-		UInstancedStaticMeshComponent* NewInstancedMeshComponent = NewObject<UInstancedStaticMeshComponent>(this);
-		NewInstancedMeshComponent->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
-		NewInstancedMeshComponent->SetStaticMesh(base.Mesh);
-		NewInstancedMeshComponent->bUseDefaultCollision = true;
-		NewInstancedMeshComponent->SetVisibility(true, false);
-		InstancedMeshComponents.Add(meshId, NewInstancedMeshComponent);
+		Module.Initialize(ModuleIndices, this);
 
-		meshId++;
 	}
-	UE_LOG(LogTemp, Warning, TEXT("Loaded blocks count: %d"), AllBlocks.Num());
+	UE_LOG(LogTemp, Warning, TEXT("Loaded blocks count: %d"), Blocks.Num());
+}
+
+Block& AProceduralGridActor::GetBlock(const int& index)
+{
+	try 
+	{
+		return Blocks[index];
+	}
+	catch (const std::exception& e) 
+	{
+		UE_LOG(LogTemp, Error, TEXT("Exception: %s"), UTF8_TO_TCHAR(e.what()));
+		return Blocks[0];
+	}
 }
 
 void AProceduralGridActor::CleanUpMesh()
@@ -62,7 +81,7 @@ void AProceduralGridActor::CleanUpMesh()
 	{
 		MeshComponent.Value->ClearInstances();
 	}
-	DeterminedBlocks.Empty();
+	Grid.Empty();
 }
 
 void AProceduralGridActor::GenerateMesh()
@@ -72,46 +91,44 @@ void AProceduralGridActor::GenerateMesh()
 		CleanUpMesh();
 
 		//Load blocks
-		if (AllBlocks.IsEmpty()) {
+		if (Blocks.IsEmpty()) {
 			UE_LOG(LogTemp, Warning, TEXT("No blocks found"));
 			LoadBlocks();
 		}
 
 		//Check modules
-		if (ModuleClasses.IsEmpty()) throw std::runtime_error("No modules found");
+		if (Modules.IsEmpty()) throw std::runtime_error("No modules found");
 
 
-		for (auto ModuleClass : ModuleClasses) {
+		for (auto ModuleClass : Modules) {
 			if (ModuleClass == nullptr) throw std::runtime_error("Empty module detected");
 		}
 
 		//Process modules
-		for (auto ModuleClass : ModuleClasses)
+		for (auto ModuleClass : Modules)
 		{
 			AModuleBase& Module = *ModuleClass->GetDefaultObject<AModuleBase>();
 			FString ModuleName = Utility::CleanName(Module.GetName());
 			UE_LOG(LogTemp, Warning, TEXT("Processing %s"), *ModuleName);
-			int maxAttempts = 5000;
+			int maxAttempts = 10;
 			int attempt = 0;
 			while(attempt < maxAttempts)
 			{
 				try {
-					Module.Process(DeterminedBlocks, AllBlocks, Size);
+					Module.Process();
 					break;
 				}
-				catch (const std::exception&) {
-					//UE_LOG(LogTemp, Error, TEXT("Exception: %s"), UTF8_TO_TCHAR(e.what()));
+				catch (const std::exception& e) {
+					UE_LOG(LogTemp, Error, TEXT("Exception: %s"), UTF8_TO_TCHAR(e.what()));
 					attempt++;
 				}
 			}
 
-			if(attempt >= maxAttempts) throw std::runtime_error("Failed to process module (5000 attempts failed)");
+			if(attempt >= maxAttempts) throw std::runtime_error("Failed to process module");
 
-			UE_LOG(LogTemp, Warning, TEXT("%s finished (total blocks: %d) (Attempt: %d)"), *ModuleName, DeterminedBlocks.Num(), attempt);
+			UE_LOG(LogTemp, Warning, TEXT("%s finished (total blocks: %d) (Attempt: %d)"), *ModuleName, Grid.Num(), attempt);
 		}
 
-		//Spawn mesh
-		UE_LOG(LogTemp, Warning, TEXT("Spawning mesh (%d blocks)"), DeterminedBlocks.Num());
 		SpawnMesh();
 	}
 	catch (const std::exception& e) {
@@ -122,23 +139,25 @@ void AProceduralGridActor::GenerateMesh()
 
 void AProceduralGridActor::SpawnMesh()
 {
-	//for (auto& pair : DeterminedBlocks)
-	//{
-	//	SpawnBlock(pair.Key, pair.Value);
-	//}
-	if (DeterminedBlocks.IsEmpty()) return;
+	if (Grid.IsEmpty()) return;
 
-	auto pair = *DeterminedBlocks.begin();
+	auto pair = *Grid.begin();
 	SpawnBlock(pair.Key, pair.Value);
-	DeterminedBlocks.Remove(pair.Key);
+	Grid.Remove(pair.Key);
 
-	GetWorldTimerManager().SetTimer(DelayHandle, this, &AProceduralGridActor::SpawnMesh, Delay, false);
+	if (Delay <= 0) {
+		SpawnMesh();
+	}
+	else {
+		GetWorldTimerManager().SetTimer(DelayHandle, this, &AProceduralGridActor::SpawnMesh, Delay, false);
+	}
+	
 }
 
 
-
-void AProceduralGridActor::SpawnBlock(const FIntVector& position, const WFCBlock& block)
+void AProceduralGridActor::SpawnBlock(const FIntVector& position, const int& blockIndex)
 {
+	Block& block = GetBlock(blockIndex);
 	if (block.MeshId == 0) return;
 	
 	FVector Location = FVector(position) * Offset - FVector(Size.X * Offset / 2, Size.Y * Offset / 2, -Offset / 2);
@@ -153,6 +172,4 @@ void AProceduralGridActor::SpawnBlock(const FIntVector& position, const WFCBlock
 	}
 
 	InstancedMeshComponents[block.MeshId]->AddInstance(Transform); //spawn mesh
-
-	
 }

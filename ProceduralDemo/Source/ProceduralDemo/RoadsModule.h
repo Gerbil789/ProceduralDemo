@@ -9,10 +9,10 @@ class PROCEDURALDEMO_API ARoadsModule : public AModuleBase
 {
 	GENERATED_BODY()
 public:
-	virtual void Process(TMap<FIntVector, WFCBlock>& determinedBlocks, const TArray<WFCBlock>& blocks, const FIntVector& size) override;
+	virtual void Process() override;
 private:
-	WFCBlock GetRandomBlock(const TArray<WFCBlock>& blocks);
-	bool IsValid(WFCBlock block, FIntVector position);
+	int GetRandomBlock(const TArray<int>& ids);
+	bool IsValid(int id, FIntVector position);
 	const TArray<FIntVector> Directions = 
 	{ 
 		FIntVector(1, 0, 0),

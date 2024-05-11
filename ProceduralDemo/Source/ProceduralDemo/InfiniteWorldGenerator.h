@@ -1,11 +1,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "DebugSphereActor.h"
 #include "Chunk.h"
 #include "GameFramework/Actor.h"
 #include "InfiniteWorldGenerator.generated.h"
-
 
 
 
@@ -41,9 +39,6 @@ protected:
 	TSubclassOf<AChunk> ChunkActorBlueprint;
 
 	UPROPERTY(EditAnywhere, Category = "InfiniteWorld")
-	TSubclassOf<ADebugSphereActor> DebugActorBlueprint;
-
-	UPROPERTY(EditAnywhere, Category = "InfiniteWorld")
 	int LoadDistance = 2;
 
 	UPROPERTY(EditAnywhere, Category = "InfiniteWorld")
@@ -52,13 +47,11 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "InfiniteWorld")
 	float ChunkSize = 1000;
 
-	
 private:
 	void UpdateWorld(const FVector& PlayerLocation);
 
 	FIntVector CurrentChunkPosition;
 
-	//TMap<FIntVector, ADebugSphereActor*> LoadedChunks;
 	TMap<FIntVector, AChunk*> LoadedChunks;
 
 	void LoadChunk(const FIntVector& ChunkLocation);

@@ -50,11 +50,6 @@ void AInfiniteWorldGenerator::GenerateInitialChunks()
 		UE_LOG(LogTemp, Error, TEXT("MarchingCubesActorBlueptint is not set in the editor for %s"), *GetName());
 		return;
 	}
-	if (DebugActorBlueprint == nullptr)
-	{
-		UE_LOG(LogTemp, Error, TEXT("DebugActor is not set in the editor for %s"), *GetName());
-		return;
-	}
 
 	UE_LOG(LogTemp, Warning, TEXT("GenerateInitialChunks"));
 

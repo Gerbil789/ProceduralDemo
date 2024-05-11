@@ -2,19 +2,35 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "WFCBlock.h"
+#include "Block.h"
 #include "ModuleBase.generated.h"
+
+class AProceduralGridActor; //forward declaration
+
+USTRUCT(BlueprintType)
+struct FBlockWithPriority
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<ABlockActor> Block;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 Priority = 1;
+};
+
 
 UCLASS(Abstract)
 class PROCEDURALDEMO_API AModuleBase : public AActor
 {
 	GENERATED_BODY()
-	
 public:	
-	AModuleBase();
-	virtual void Process(TMap<FIntVector, WFCBlock>& determinedBlocks, const TArray<WFCBlock>& blocks, const FIntVector& size);
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blocks")
+	TArray<FBlockWithPriority> BlueprintBlocks; //input blocks
+
+	void Initialize(TArray<int> blockIds, AProceduralGridActor* gridActor);
+	virtual void Process();
 protected:
-	TArray<WFCBlock> Blocks;
-	TMap<FIntVector, WFCBlock> DeterminedBlocks;
-	FIntVector Size;
+	TArray<int> BlockIds;
+	AProceduralGridActor* GridActor;
 };

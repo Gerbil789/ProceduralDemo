@@ -5,5 +5,6 @@
 class Utility
 {
 public:
-	static FString CleanName(FString Name);
+	static FString CleanName(const FString& FullName);
 };
+

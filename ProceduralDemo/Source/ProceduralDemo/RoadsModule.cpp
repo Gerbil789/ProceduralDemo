@@ -1,24 +1,12 @@
 #include "RoadsModule.h"
+#include "ProceduralGridActor.h"
 
-void ARoadsModule::Process(TMap<FIntVector, WFCBlock>& determinedBlocks, const TArray<WFCBlock>& blocks, const FIntVector& size)
+void ARoadsModule::Process()
 {
-	AModuleBase::Process(determinedBlocks, blocks, size);
-
-	// get subset of blocks with roads only
-	TArray<WFCBlock> roadBlocks;
-	for (const WFCBlock& block : Blocks) {
-		if (block.Type == BlockType::ROAD) {
-			roadBlocks.Add(block);
-		}
-	}
-
-	if (roadBlocks.Num() == 0) throw std::runtime_error("No road blocks found");
-	//UE_LOG(LogTemp, Warning, TEXT("Road blocks: %d"), roadBlocks.Num());
-
 	TSet<FIntVector> AvailablePositions;
-	for (int x = 0; x < Size.X; x++) {
-		for (int y = 0; y < Size.Y; y++) {
-			if (DeterminedBlocks.Contains(FIntVector(x, y, 0))) continue;
+	for (int x = 0; x < GridActor->Size.X; x++) {
+		for (int y = 0; y < GridActor->Size.Y; y++) {
+			if (GridActor->Grid.Contains(FIntVector(x, y, 0))) continue;
 			AvailablePositions.Add(FIntVector(x, y, 0));
 		}
 	}
@@ -26,73 +14,72 @@ void ARoadsModule::Process(TMap<FIntVector, WFCBlock>& determinedBlocks, const T
 	if (AvailablePositions.IsEmpty()) return;
 
 	std::queue<FIntVector> Queue;
+	// push random position to start
 	Queue.push(AvailablePositions.Array()[FMath::RandRange(0, AvailablePositions.Num() - 1)]);
 
 	while (!Queue.empty()) {
 		FIntVector current = Queue.front();
 		Queue.pop();
 
-		if (DeterminedBlocks.Contains(current)) continue;
+		if (GridActor->Grid.Contains(current)) continue;
 
-		TArray<WFCBlock> roadBlocksCopy = roadBlocks;
-		
-		WFCBlock block = GetRandomBlock(roadBlocksCopy);
+		TArray<int> roadBlocksCopy = BlockIds;
+		int blockId = GetRandomBlock(roadBlocksCopy);
 
-		while (!IsValid(block, current)) {
-			roadBlocksCopy.Remove(block);
+		while (!IsValid(blockId, current)) {
+			roadBlocksCopy.Remove(blockId);
 			if (roadBlocksCopy.Num() == 0) {
 				throw std::runtime_error("No valid blocks found");
 			}
-			block = GetRandomBlock(roadBlocksCopy);
+			blockId = GetRandomBlock(roadBlocksCopy);
 		}
 
-		DeterminedBlocks.Add(current, block);
+		GridActor->Grid.Add(current, blockId);
+		Block block = GridActor->Blocks[blockId];
 
 		for (auto dir : Directions) {
 			FIntVector newPosition = current + dir;
-			if (newPosition.X < 0 || newPosition.X >= Size.X || newPosition.Y < 0 || newPosition.Y >= Size.Y) continue;
-			if (DeterminedBlocks.Contains(newPosition)) continue;
+			if (newPosition.X < 0 || newPosition.X >= GridActor->Size.X || newPosition.Y < 0 || newPosition.Y >= GridActor->Size.Y) continue;
+			if (GridActor->Grid.Contains(newPosition)) continue;
 
-			if ((dir.X == 1 && block.Right.Connector == 3) ||
-				(dir.X == -1 && block.Left.Connector == 3) ||
-				(dir.Y == 1 && block.Front.Connector == 3) ||
-				(dir.Y == -1 && block.Back.Connector == 3)) {
+			if ((dir.X == 1 && block.Right.Connector == 2) ||
+				(dir.X == -1 && block.Left.Connector == 2) ||
+				(dir.Y == 1 && block.Front.Connector == 2) ||
+				(dir.Y == -1 && block.Back.Connector == 2)) {
 				Queue.push(newPosition);
 			}
 		}
 	}
-
-	determinedBlocks = DeterminedBlocks;
 }
 
-WFCBlock ARoadsModule::GetRandomBlock(const TArray<WFCBlock>& blocks)
+int ARoadsModule::GetRandomBlock(const TArray<int>& ids)
 {
-	if(blocks.Num() == 0) throw std::runtime_error("No blocks to process");
+	if(ids.Num() == 0) throw std::runtime_error("No blocks to process");
 
 	int pool = 0;
-	for (auto block : blocks) {
-		pool += block.Priority;
+	for (auto id : ids) {
+		pool += GridActor->Blocks[id].Priority;
 	}
 	int randomNumber = FMath::RandRange(0, pool);
 
-	for (auto block : blocks) {
-		randomNumber -= block.Priority;
+	for (auto id : ids) {
+		randomNumber -= GridActor->Blocks[id].Priority;
 		if (randomNumber <= 0) {
-			return block;
+			return id;
 		}
 	}
 
-	return blocks[0];
-	
+	return ids[0];
 }
 
-bool ARoadsModule::IsValid(WFCBlock block, FIntVector position)
+bool ARoadsModule::IsValid(int id, FIntVector position)
 {
 	for (auto dir : Directions)
 	{
-		if (!DeterminedBlocks.Contains(position + dir)) continue;
+		if (!GridActor->Grid.Contains(position + dir)) continue;
 
-		WFCBlock neighbour = DeterminedBlocks[position + dir];
+		Block neighbour = GridActor->Blocks[GridActor->Grid[position + dir]];
+		Block block = GridActor->Blocks[id];
 		if (dir.X == 1) {
 			if (block.Right.Connector != neighbour.Left.Connector) return false;
 		}
