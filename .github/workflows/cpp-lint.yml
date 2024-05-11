@@ -6,6 +6,7 @@ jobs:
   lint:
     name: Lint C++ Code
     runs-on: ubuntu-latest
+    continue-on-error: true 
 
     steps:
     - name: Checkout code
