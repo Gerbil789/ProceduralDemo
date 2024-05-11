@@ -5,14 +5,14 @@
 
 struct FWFCSocket
 {
-	virtual FString ToString() const = 0; // Pure virtual function
+	virtual auto ToString() const->FString = 0; // Pure virtual function
 };
 
 struct FWFCSocketHorizontal : public FWFCSocket
 {
 	int32 Connector;
-	bool Symmetric;
-	bool Flipped;
+	bool Symmetric = false;
+	bool Flipped = false;
 
 	FWFCSocketHorizontal() : Connector(-1), Symmetric(false), Flipped(false) {}
 
@@ -38,7 +38,7 @@ struct FWFCSocketHorizontal : public FWFCSocket
 		return false;
 	}
 
-	FString ToString() const
+	auto ToString() const -> FString
 	{
 		FString str = FString::FromInt(Connector);
 		if (Symmetric)
@@ -56,8 +56,8 @@ struct FWFCSocketHorizontal : public FWFCSocket
 struct FWFCSocketVertical : public FWFCSocket
 {
 	int32 Connector;
-	bool IrelevantRotation;
-	int Rotation;
+	bool IrelevantRotation = false;
+	int Rotation = 0;
 
 	FWFCSocketVertical() : Connector(-1), IrelevantRotation(false), Rotation(0) {}
 
@@ -77,7 +77,7 @@ struct FWFCSocketVertical : public FWFCSocket
 		return false;
 	}
 
-	FString ToString() const
+	auto ToString() const -> FString
 	{
 		FString str = FString::FromInt(Connector);
 		if (IrelevantRotation)
@@ -103,7 +103,7 @@ public:
 	FWFCSocketHorizontal Front = FWFCSocketHorizontal();
 	FWFCSocketHorizontal Back = FWFCSocketHorizontal();
 
-	Block() {};
+	Block() = default;
 
 	Block(const int& meshId, const int& rotation, const int& priority, const ABlockActor& blockActor) :
 		MeshId(meshId),
