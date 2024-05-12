@@ -280,7 +280,7 @@ TSet<int> ABuildingModule::GetIncompatibleBlocks(const FIntVector& position)
 
 		//compare block socktes
 		for (auto BlockId : UncollapsedGrid[position]) {
-			if (!BlockToCompare.IsValidNeighbor(GridActor->Blocks[BlockId], Direction * -1)) {
+			if (!BlockToCompare.IsValidNeighbor(GridActor->Blocks[BlockId], Direction)) {
 				BlocksToRemove.Add(BlockId);
 			}
 		}
