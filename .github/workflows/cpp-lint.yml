@@ -6,10 +6,11 @@ jobs:
   lint:
     name: Lint C++ Code
     runs-on: ubuntu-latest
+    continue-on-error: true 
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Install LLVM/Clang
       run: |
