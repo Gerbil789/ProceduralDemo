@@ -3,20 +3,20 @@
 #include "Utility.h"
 #include "BlockActor.h"
 
-struct FWFCSocket
+struct Socket
 {
 	virtual auto ToString() const->FString = 0; // Pure virtual function
 };
 
-struct FWFCSocketHorizontal : public FWFCSocket
+struct SocketHorizontal : public Socket
 {
 	int32 Connector;
 	bool Symmetric = false;
 	bool Flipped = false;
 
-	FWFCSocketHorizontal() : Connector(-1), Symmetric(false), Flipped(false) {}
+	SocketHorizontal() : Connector(-1), Symmetric(false), Flipped(false) {}
 
-	bool operator==(const FWFCSocketHorizontal& other) const
+	bool operator==(const SocketHorizontal& other) const
 	{
 		if (Connector == other.Connector) {
 			if (Symmetric) {
@@ -53,15 +53,15 @@ struct FWFCSocketHorizontal : public FWFCSocket
 	}
 };
 
-struct FWFCSocketVertical : public FWFCSocket
+struct SocketVertical : public Socket
 {
 	int32 Connector;
 	bool IrelevantRotation = false;
 	int Rotation = 0;
 
-	FWFCSocketVertical() : Connector(-1), IrelevantRotation(false), Rotation(0) {}
+	SocketVertical() : Connector(-1), IrelevantRotation(false), Rotation(0) {}
 
-	bool operator==(const FWFCSocketVertical& other) const
+	bool operator==(const SocketVertical& other) const
 	{
 		if(Connector == other.Connector) {
 			if (IrelevantRotation) {
@@ -96,12 +96,12 @@ public:
 	int Priority = 1;
 	FString Name = "";
 	
-	FWFCSocketVertical Top = FWFCSocketVertical();
-	FWFCSocketVertical Bottom = FWFCSocketVertical();
-	FWFCSocketHorizontal Left = FWFCSocketHorizontal();
-	FWFCSocketHorizontal Right = FWFCSocketHorizontal();
-	FWFCSocketHorizontal Front = FWFCSocketHorizontal();
-	FWFCSocketHorizontal Back = FWFCSocketHorizontal();
+	SocketVertical Top = SocketVertical();
+	SocketVertical Bottom = SocketVertical();
+	SocketHorizontal Left = SocketHorizontal();
+	SocketHorizontal Right = SocketHorizontal();
+	SocketHorizontal Front = SocketHorizontal();
+	SocketHorizontal Back = SocketHorizontal();
 
 	Block() = default;
 
@@ -142,9 +142,9 @@ public:
 		//UE_LOG(LogTemp, Warning, TEXT("Block name: %s"), *Name);
 	}
 
-	static FWFCSocketHorizontal ParseHorizontal(const FString& str)
+	static SocketHorizontal ParseHorizontal(const FString& str)
 	{
-		FWFCSocketHorizontal socket;
+		SocketHorizontal socket;
 
 		if (str.EndsWith(TEXT("s"))) {
 			socket.Symmetric = true;
@@ -160,9 +160,9 @@ public:
 		return socket;
 	}
 
-	static FWFCSocketVertical ParseVertical(const FString& str, const int& rotation)
+	static SocketVertical ParseVertical(const FString& str, const int& rotation)
 	{
-		FWFCSocketVertical socket;
+		SocketVertical socket;
 
 		if(str.EndsWith(TEXT("i"))) {
 			socket.IrelevantRotation = true;
@@ -197,5 +197,30 @@ public:
 		HashCode = HashCombine(HashCode, GetTypeHash(Block.MeshId));
 		return HashCode;
 	}
+
+	bool IsValidNeighbor(const Block& other, const FIntVector& direction)
+	{
+		if (direction.X == 1) {
+			return (this->Right == other.Left);
+		}
+		else if (direction.X == -1) {
+			return (this->Left == other.Right);
+		}
+		else if (direction.Y == 1) {
+			return (this->Front == other.Back);
+		}
+		else if (direction.Y == -1) {
+			return (this->Back == other.Front);
+		}
+		else if (direction.Z == 1) {
+			return (this->Top == other.Bottom);
+		}
+		else if (direction.Z == -1) {
+			return (this->Bottom == other.Top);
+		}
+
+		throw std::invalid_argument("Invalid direction (expected horizontal)");
+	}
+
 };
 	

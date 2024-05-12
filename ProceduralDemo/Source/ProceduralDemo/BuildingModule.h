@@ -22,14 +22,16 @@ private:
 		FIntVector(0, 0, -1)
 	};
 
-	/*TMap<FIntVector, TArray<int>> UncollapsedGrid = TMap<FIntVector, TArray<int>>();
+	TMap<FIntVector, TArray<int>> UncollapsedGrid;
 	std::stack<FIntVector> Wave;
-	TSet<FIntVector> InWave;*/
+	TSet<FIntVector> InWave;
+	TMap<FIntVector, int> Grid; //copy of the grid (in case the algorithm fails, dont modify the original)
+	int CollapsedCount = 0;
 
-	/*FIntVector GetLowestEntropyPosition();
+	FIntVector GetLowestEntropyPosition();
 	TArray<FIntVector> GetNeighbors(const FIntVector& position);
 	int PickBlock(const FIntVector& position);
 	void Collapse(const FIntVector& position);
 	void Propagate(const FIntVector& position);
-	TSet<int> GetIncompatibleBlocks(const FIntVector& position);*/
+	TSet<int> GetIncompatibleBlocks(const FIntVector& position);
 };

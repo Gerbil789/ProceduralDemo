@@ -11,7 +11,7 @@ void AProceduralGridActor::LoadBlocks()
 {
 	CleanUpMesh();
 	UE_LOG(LogTemp, Warning, TEXT("Loading blocks..."));
-	Blocks.Empty();
+	Blocks = TArray<Block>();
 	int meshId = 1;
 
 	for (auto module : Modules)
@@ -110,7 +110,7 @@ void AProceduralGridActor::GenerateMesh()
 			AModuleBase& Module = *ModuleClass->GetDefaultObject<AModuleBase>();
 			FString ModuleName = Utility::CleanName(Module.GetName());
 			UE_LOG(LogTemp, Warning, TEXT("Processing %s"), *ModuleName);
-			int maxAttempts = 10;
+			int maxAttempts = 3;
 			int attempt = 0;
 			while(attempt < maxAttempts)
 			{
