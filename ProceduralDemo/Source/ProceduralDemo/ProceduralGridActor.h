@@ -31,12 +31,13 @@ public:
     void LoadBlocks();
 
     Block& GetBlock(const int& index);
-    int FindBlockIndex(const FString& name);
+    TArray<int> FindBlocks(const FString& name);
 
-    TMap<FIntVector, int> Grid = TMap<FIntVector, int>(); //result grid
-    TArray<Block> Blocks = TArray<Block>();   //all block types (with rotations)
+    TMap<FIntVector, int> Grid = TMap<FIntVector, int>();   //result grid
+    TArray<Block> Blocks = TArray<Block>();                 //all block types (with rotations)
+
 private:
-    int Offset = 200;
+    int Offset = 200; //spawn offset
     FTimerHandle DelayHandle;
     TMap<int, UInstancedStaticMeshComponent*> InstancedMeshComponents = TMap<int, UInstancedStaticMeshComponent*>();
 

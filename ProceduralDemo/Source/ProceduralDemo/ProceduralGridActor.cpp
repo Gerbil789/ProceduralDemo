@@ -31,7 +31,7 @@ void AProceduralGridActor::LoadBlocks()
 			ABlockActor& blockActor = *block.Block->GetDefaultObject<ABlockActor>();
 
 			if (blockActor.Mesh == nullptr) {
-				int index = Blocks.AddUnique(Block(0, 0, block.Priority, blockActor));
+				int index = Blocks.AddUnique(Block(0, 0, block.Priority, blockActor)); //empty block
 				ModuleIndices.Add(index);
 				continue;
 			}
@@ -73,15 +73,14 @@ Block& AProceduralGridActor::GetBlock(const int& index)
 	}
 }
 
-int AProceduralGridActor::FindBlockIndex(const FString& name)
+TArray<int> AProceduralGridActor::FindBlocks(const FString& name)
 {
+	TArray<int> result;
 	for (int i = 0; i < Blocks.Num(); i++)
 	{
-		if (Blocks[i].Name == name) return i;
+		if (Blocks[i].Name == name) result.Add(i);
 	}
-
-	FString message = FString::Printf(TEXT("Block %s not found"), *name);
-	throw std::runtime_error(TCHAR_TO_UTF8(*message));
+	return result;
 }
 
 void AProceduralGridActor::CleanUpMesh()
@@ -109,8 +108,6 @@ void AProceduralGridActor::GenerateMesh()
 
 		//Check modules
 		if (Modules.IsEmpty()) throw std::runtime_error("No modules found");
-
-
 		for (auto ModuleClass : Modules) {
 			if (ModuleClass == nullptr) throw std::runtime_error("Empty module detected");
 		}
@@ -118,7 +115,6 @@ void AProceduralGridActor::GenerateMesh()
 		//Process modules
 		for (auto ModuleClass : Modules)
 		{
-			int CountBefore = Grid.Num();
 			AModuleBase& Module = *ModuleClass->GetDefaultObject<AModuleBase>();
 			FString ModuleName = Utility::CleanName(Module.GetName());
 			UE_LOG(LogTemp, Warning, TEXT("Processing %s"), *ModuleName);
@@ -138,7 +134,7 @@ void AProceduralGridActor::GenerateMesh()
 
 			if (attempt >= maxAttempts) throw std::runtime_error("Failed to process module");
 
-			UE_LOG(LogTemp, Warning, TEXT("%s finished (blocks: %d) (total blocks: %d) (Attempt: %d)"), *ModuleName, Grid.Num() - CountBefore, Grid.Num(), attempt);
+			UE_LOG(LogTemp, Warning, TEXT("%s finished (total blocks: %d) (Attempt: %d)"), *ModuleName, Grid.Num(), attempt);
 		}
 
 		SpawnMesh();

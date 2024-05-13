@@ -10,8 +10,8 @@ void ABuildingModule::Process()
 	Grid = GridActor->Grid;
 	CollapsedCount = Grid.Num();
 
-	int emptyBlockId = GridActor->FindBlockIndex("Empty");
-	int sidewalkBlockId = GridActor->FindBlockIndex("Sidewalk");
+	int emptyBlockId = GridActor->FindBlocks("Empty")[0];
+	int sidewalkBlockId = GridActor->FindBlocks("Sidewalk")[0];
 
 	//initialize uncollapsed grid
 	for (int X = 0; X < GridActor->Size.X; X++)
