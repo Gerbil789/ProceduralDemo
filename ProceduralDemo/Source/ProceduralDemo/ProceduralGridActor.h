@@ -31,6 +31,7 @@ public:
     void LoadBlocks();
 
     Block& GetBlock(const int& index);
+    int FindBlockIndex(const FString& name);
 
     TMap<FIntVector, int> Grid = TMap<FIntVector, int>(); //result grid
     TArray<Block> Blocks = TArray<Block>();   //all block types (with rotations)

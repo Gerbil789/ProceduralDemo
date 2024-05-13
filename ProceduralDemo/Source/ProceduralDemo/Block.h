@@ -10,11 +10,11 @@ struct Socket
 
 struct SocketHorizontal : public Socket
 {
-	int32 Connector = 0;
+	int32 Connector = -1;
 	bool Symmetric = false;
 	bool Flipped = false;
 
-	SocketHorizontal() {}
+	SocketHorizontal() = default;
 
 	SocketHorizontal(const FString& str)
 	{
@@ -70,11 +70,11 @@ struct SocketHorizontal : public Socket
 
 struct SocketVertical : public Socket
 {
-	int32 Connector;
+	int32 Connector = -1;
 	bool IrelevantRotation = false;
 	int Rotation = 0;
 
-	SocketVertical() {}
+	SocketVertical() = default;
 
 	SocketVertical(const FString& str, const int& rotation)  
 	{
@@ -129,6 +129,8 @@ public:
 	SocketHorizontal Right = SocketHorizontal();
 	SocketHorizontal Front = SocketHorizontal();
 	SocketHorizontal Back = SocketHorizontal();
+
+	Block() = default;
 
 	Block(const int& meshId, const int& rotation, const int& priority, const ABlockActor& blockActor) :
 		MeshId(meshId),

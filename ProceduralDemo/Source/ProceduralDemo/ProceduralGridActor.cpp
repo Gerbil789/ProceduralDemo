@@ -19,8 +19,8 @@ void AProceduralGridActor::LoadBlocks()
 		AModuleBase& Module = *module->GetDefaultObject<AModuleBase>();
 		FString ModuleName = Utility::CleanName(*Module.GetName()); //clean module name from engine garbage
 		UE_LOG(LogTemp, Warning, TEXT("Loading blocks from %s"), *ModuleName);
-		if(Module.BlueprintBlocks.Num() == 0) UE_LOG(LogTemp, Error, TEXT("No blocks found in %s"), *ModuleName);
-		
+		if (Module.BlueprintBlocks.Num() == 0) UE_LOG(LogTemp, Error, TEXT("No blocks found in %s"), *ModuleName);
+
 		TArray<int> ModuleIndices;
 
 
@@ -62,15 +62,26 @@ void AProceduralGridActor::LoadBlocks()
 
 Block& AProceduralGridActor::GetBlock(const int& index)
 {
-	try 
+	try
 	{
 		return Blocks[index];
 	}
-	catch (const std::exception& e) 
+	catch (const std::exception& e)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Exception: %s"), UTF8_TO_TCHAR(e.what()));
 		return Blocks[0];
 	}
+}
+
+int AProceduralGridActor::FindBlockIndex(const FString& name)
+{
+	for (int i = 0; i < Blocks.Num(); i++)
+	{
+		if (Blocks[i].Name == name) return i;
+	}
+
+	FString message = FString::Printf(TEXT("Block %s not found"), *name);
+	throw std::runtime_error(TCHAR_TO_UTF8(*message));
 }
 
 void AProceduralGridActor::CleanUpMesh()
@@ -103,30 +114,31 @@ void AProceduralGridActor::GenerateMesh()
 		for (auto ModuleClass : Modules) {
 			if (ModuleClass == nullptr) throw std::runtime_error("Empty module detected");
 		}
-
+		
 		//Process modules
 		for (auto ModuleClass : Modules)
 		{
+			int CountBefore = Grid.Num();
 			AModuleBase& Module = *ModuleClass->GetDefaultObject<AModuleBase>();
 			FString ModuleName = Utility::CleanName(Module.GetName());
 			UE_LOG(LogTemp, Warning, TEXT("Processing %s"), *ModuleName);
-			int maxAttempts = 3;
+			int maxAttempts = 100;
 			int attempt = 0;
-			while(attempt < maxAttempts)
+			while (attempt < maxAttempts)
 			{
 				try {
 					Module.Process();
 					break;
 				}
-				catch (const std::exception& e) {
-					UE_LOG(LogTemp, Error, TEXT("Exception: %s"), UTF8_TO_TCHAR(e.what()));
+				catch (const std::exception&) {
+					//UE_LOG(LogTemp, Error, TEXT("Exception: %s"), UTF8_TO_TCHAR(e.what()));
 					attempt++;
 				}
 			}
 
-			if(attempt >= maxAttempts) throw std::runtime_error("Failed to process module");
+			if (attempt >= maxAttempts) throw std::runtime_error("Failed to process module");
 
-			UE_LOG(LogTemp, Warning, TEXT("%s finished (total blocks: %d) (Attempt: %d)"), *ModuleName, Grid.Num(), attempt);
+			UE_LOG(LogTemp, Warning, TEXT("%s finished (blocks: %d) (total blocks: %d) (Attempt: %d)"), *ModuleName, Grid.Num() - CountBefore, Grid.Num(), attempt);
 		}
 
 		SpawnMesh();
@@ -145,13 +157,13 @@ void AProceduralGridActor::SpawnMesh()
 	SpawnBlock(pair.Key, pair.Value);
 	Grid.Remove(pair.Key);
 
-	if (Delay <= 0) {
+	if (Delay <= 0 || Blocks[pair.Value].MeshId == 0) {
 		SpawnMesh();
 	}
 	else {
 		GetWorldTimerManager().SetTimer(DelayHandle, this, &AProceduralGridActor::SpawnMesh, Delay, false);
 	}
-	
+
 }
 
 
@@ -159,7 +171,7 @@ void AProceduralGridActor::SpawnBlock(const FIntVector& position, const int& blo
 {
 	Block& block = GetBlock(blockIndex);
 	if (block.MeshId == 0) return;
-	
+
 	FVector Location = FVector(position) * Offset - FVector(Size.X * Offset / 2, Size.Y * Offset / 2, -Offset / 2);
 
 	FTransform Transform = FTransform(Location);

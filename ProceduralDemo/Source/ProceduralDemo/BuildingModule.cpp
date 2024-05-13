@@ -10,28 +10,10 @@ void ABuildingModule::Process()
 	Grid = GridActor->Grid;
 	CollapsedCount = Grid.Num();
 
-	//define border blocks
-	/*Block topBorderBlock = Block();
-	topBorderBlock.Bottom = Block::ParseVertical("0i", 0);
+	int emptyBlockId = GridActor->FindBlockIndex("Empty");
+	int sidewalkBlockId = GridActor->FindBlockIndex("Sidewalk");
 
-	Block bottomBorderBlock = Block();
-	bottomBorderBlock.Top = Block::ParseVertical("1i", 0);
-
-	Block emptyBlock = Block();
-	emptyBlock.Left = Block::ParseHorizontal("0s");
-	emptyBlock.Right = Block::ParseHorizontal("0s");
-	emptyBlock.Front = Block::ParseHorizontal("0s");
-	emptyBlock.Back = Block::ParseHorizontal("0s");
-	emptyBlock.Top = Block::ParseVertical("0i", 0);
-	emptyBlock.Bottom = Block::ParseVertical("0i", 0);
-
-	Block sidewalkBlock = Block();
-	sidewalkBlock.Left = Block::ParseHorizontal("4s");
-	sidewalkBlock.Right = Block::ParseHorizontal("4s");
-	sidewalkBlock.Front = Block::ParseHorizontal("4s");
-	sidewalkBlock.Back = Block::ParseHorizontal("4s");*/
-
-
+	//initialize uncollapsed grid
 	for (int X = 0; X < GridActor->Size.X; X++)
 	{
 		for (int Y = 0; Y < GridActor->Size.Y; Y++)
@@ -46,69 +28,16 @@ void ABuildingModule::Process()
 
 			//add top and bottom border blocks
 			//DeterminedBlocks.Add(FIntVector(X, Y, Size.Z), topBorderBlock);
-			//DeterminedBlocks.Add(FIntVector(X, Y, -1), bottomBorderBlock);
+			//Grid.Add(FIntVector(X, Y, -1), bottomBorderBlock);
 		}
 	}
 
-	/*for (int X = 0; X < Size.X; X++)
-	{
-		for (int Y = 0; Y < Size.Y; Y++)
-		{
-			for (auto Z : { 1, Size.Z - 1 }) {
-
-				TSet<int> BlocksToRemove;
-				for (auto blockId : Grid[FIntVector(X, Y, Z)]) {
-					if (X == 0 && Blocks[blockId].Left != emptyBlock.Right ||
-						X == Size.X - 1 && Blocks[blockId].Right != emptyBlock.Left ||
-						Y == 0 && Blocks[blockId].Back != emptyBlock.Front ||
-						Y == Size.Y - 1 && Blocks[blockId].Front != emptyBlock.Back)
-					{
-						BlocksToRemove.Add(blockId);
-					}
-				}
-				for (auto blockId : BlocksToRemove) {
-					Grid[FIntVector(X, Y, Z)].Remove(blockId);
-				}
-			}
-
-			TSet<int> BlocksToRemove;
-			for (auto blockId : Grid[FIntVector(X, Y, Size.Z - 1)]) {
-				if (Blocks[blockId].Top != emptyBlock.Bottom)
-				{
-					BlocksToRemove.Add(blockId);
-				}
-			}
-			for (auto blockId : BlocksToRemove) {
-				Grid[FIntVector(X, Y, Size.Z - 1)].Remove(blockId);
-			}
-
-			BlocksToRemove.Empty();
-			for (auto blockId : Grid[FIntVector(X, Y, 0)]) {
-				if (X == 0 && Blocks[blockId].Left != sidewalkBlock.Right ||
-					X == Size.X - 1 && Blocks[blockId].Right != sidewalkBlock.Left ||
-					Y == 0 && Blocks[blockId].Back != sidewalkBlock.Front ||
-					Y == Size.Y - 1 && Blocks[blockId].Front != sidewalkBlock.Back)
-				{
-					BlocksToRemove.Add(blockId);
-				}
-			}
-			for (auto blockId : BlocksToRemove) {
-				Grid[FIntVector(X, Y, 0)].Remove(blockId);
-			}
-
-		
-		}
-	}*/
-
-	UE_LOG(LogTemp, Warning, TEXT("Grid size: %d"), Grid.Num());
-
+	//propagate already existing blocks
 	for (auto& pair : Grid)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Grid: %s"), *pair.Key.ToString());
 		Propagate(pair.Key);
 	}
 
-	
 	//collapse
 	int tmp = 0;
 	int total = GridActor->Size.X * GridActor->Size.Y * GridActor->Size.Z;
@@ -119,14 +48,80 @@ void ABuildingModule::Process()
 		Propagate(position);
 	}
 
-	//remove all border blocks (check size)
-	//for (auto& pair : Grid)
-	//{
-	//	if (pair.Key.X == -1 || pair.Key.X == GridActor->Size.X || pair.Key.Y == -1 || pair.Key.Y == GridActor->Size.Y || pair.Key.Z == -1 || pair.Key.Z == GridActor->Size.Z) {
-	//		Grid.Remove(pair.Key);
-	//	}
-	//}
+	//initialize border blocks
+	for (int X = -1; X <= GridActor->Size.X; X++)
+	{
+		for (int Y = -1; Y <= GridActor->Size.Y; Y++)
+		{
+			for (int Z = 0; Z < GridActor->Size.Z; Z++)
+			{
+				if (X == -1 || X == GridActor->Size.X || Y == -1 || Y == GridActor->Size.Y) {
+					if (Z == 0) Grid.Add(FIntVector(X, Y, Z), sidewalkBlockId);
+					else Grid.Add(FIntVector(X, Y, Z), emptyBlockId);
+				}
 
+				if(X == 0 || X == GridActor->Size.X - 1 || Y == 0 || Y == GridActor->Size.Y - 1) {
+					if (GridActor->Grid.Contains(FIntVector(X, Y, Z))) continue; //skip already existing blocks
+					Grid.Remove(FIntVector(X, Y, Z));
+					CollapsedCount--;
+
+					//corners
+					if ((X == 0 && Y == 0) || (X == 0 && Y == GridActor->Size.Y - 1) || (X == GridActor->Size.X - 1 && Y == 0) || (X == GridActor->Size.X - 1 && Y == GridActor->Size.Y - 1)) {
+						if(Z == 0) {
+							TArray<int> BlockArray = TArray<int>{ sidewalkBlockId };
+							UncollapsedGrid.Emplace(FIntVector(X, Y, Z), BlockArray);
+						}
+						else {
+							TArray<int> BlockArray = TArray<int>{ emptyBlockId };
+							UncollapsedGrid.Emplace(FIntVector(X, Y, Z), BlockArray);
+						}
+					}
+					else {
+						TArray<int> BlockArray = BlockIds;
+						UncollapsedGrid.Emplace(FIntVector(X, Y, Z), BlockArray);
+					}
+				}
+			}
+		}
+	}
+
+	for (int X = -1; X <= GridActor->Size.X; X++)
+	{
+		for (int Y = -1; Y <= GridActor->Size.Y; Y++)
+		{
+			for (int Z = 0; Z < GridActor->Size.Z; Z++)
+			{
+				if (X == -1 || X == GridActor->Size.X || Y == -1 || Y == GridActor->Size.Y) {
+					Propagate(FIntVector(X, Y, Z));
+				}
+			}
+		}
+	}
+
+	//collapse borders
+	tmp = 0;
+	while (CollapsedCount != total) {
+		if (tmp++ > 1000) throw std::runtime_error("Infinite loop detected in process (1000)");
+		FIntVector position = GetLowestEntropyPosition();
+		Collapse(position);
+		Propagate(position);
+	}
+
+	//remove all extra border blocks
+	for (int X = -1; X <= GridActor->Size.X; X++)
+	{
+		for (int Y = -1; Y <= GridActor->Size.Y; Y++)
+		{
+			for (int Z = 0; Z < GridActor->Size.Z; Z++)
+			{
+				if (X == -1 || X == GridActor->Size.X || Y == -1 || Y == GridActor->Size.Y) {
+					Grid.Remove(FIntVector(X, Y, Z));
+				}
+			}
+		}
+	}
+
+	//assign grid to grid actor
 	GridActor->Grid = Grid;
 }
 
@@ -230,7 +225,7 @@ void ABuildingModule::Propagate(const FIntVector& position)
 	int tmp = 0;
 	while (!Wave.empty())
 	{
-		if (tmp++ > 1000) throw std::runtime_error("Infinite loop detected in propagation (1000)");
+		if (tmp++ > 10000) throw std::runtime_error("Infinite loop detected in propagation (10000)");
 		FIntVector CurrentPosition = Wave.top();
 		Wave.pop();
 
