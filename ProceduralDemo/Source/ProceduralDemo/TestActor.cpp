@@ -1,7 +1,6 @@
 #include "TestActor.h"
-#include "WFC/WFC_Utility.h"
+#include "WFC/Utility.h"
 
-using namespace WFC;
 // Sets default values
 ATestActor::ATestActor()
 {
@@ -24,8 +23,8 @@ void ATestActor::Tick(float DeltaTime)
 
 }
 
-void ATestActor::LoadMeshes()
-{
-  WFC_Utility::LoadMeshesFromFolder(MeshDirectoryPath);
-}
+//void ATestActor::LoadMeshes()
+//{
+//  WFC::Utility::LoadMeshesFromDirectory(MeshDirectoryPath);
+//}
 
