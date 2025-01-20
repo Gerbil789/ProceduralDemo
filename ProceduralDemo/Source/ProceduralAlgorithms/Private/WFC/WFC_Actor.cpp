@@ -33,14 +33,12 @@ bool AWFC_Actor::LoadDataset()
 	if(!Dataset)
 	{
 		UE_LOG(LogTemp, Error, TEXT("No data set assigned."));
-		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("No data set assigned."), FText::FromString(__FUNCTION__));
 		return false;
 	}
 
 	if (Dataset->Blocks.Num() == 0)
 	{
 		UE_LOG(LogTemp, Error, TEXT("No blocks in data set."));
-		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("No blocks in data set."), FText::FromString(__FUNCTION__));
 		return false;
 	}
 
@@ -109,6 +107,26 @@ void AWFC_Actor::GenerateMesh()
 
 	UE_LOG(LogTemp, Warning, TEXT("----------------------- GENERATING MESH -----------------------"));
 
+	// TEST
+	//for(int x = 0; x < GridSize.X; x++)
+	//{
+	//	for (int y = 0; y < GridSize.Y; y++)
+	//	{
+	//		if (x == 0 || y == 0 || x == GridSize.X - 1 || y == GridSize.Y - 1)
+	//		{
+	//			Grid.Add(FIntVector(x, y, 0), FWFC_Block(Blocks[0]));
+	//		}
+	//	}
+	//}
+
+	//for (int x = 0; x < GridSize.X; x++)
+	//{
+	//	Grid.Add(FIntVector(x, GridSize.Y, 0), FWFC_Block(Blocks[0]));
+	//}
+
+	//FIntVector TmpSize = GridSize;
+	//TmpSize.Y++;
+
 	WaveFunctionCollapse WFC_Algorithm;
 	if (!WFC_Algorithm.Run(Blocks, Grid, GridSize))
 	{
@@ -125,7 +143,7 @@ void AWFC_Actor::GenerateMesh()
 	}
 
 	int TotalCells = GridSize.X * GridSize.Y * GridSize.Z;
-	if(Grid.Num() != TotalCells)
+	if(Grid.Num() < TotalCells)
 	{
 		//The reason for this is very likely bad input data
 		UE_LOG(LogTemp, Error, TEXT("Failed to generate all cells. Generated %d/%d cells."), Grid.Num(), TotalCells);

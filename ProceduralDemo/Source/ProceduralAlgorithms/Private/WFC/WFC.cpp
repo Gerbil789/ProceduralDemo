@@ -1,11 +1,8 @@
 #include "WFC/WFC.h"
 
-
 bool WaveFunctionCollapse::Run(const TArray<FWFC_Block>& Blocks, TMap<FIntVector, FWFC_Block>& OutGrid, const FIntVector& Size)
 {
 	Initialize(Blocks, Size, OutGrid);
-
-	TArray<FIntVector> PropagationStack;
 
 	while (true)
 	{
@@ -13,8 +10,7 @@ bool WaveFunctionCollapse::Run(const TArray<FWFC_Block>& Blocks, TMap<FIntVector
 		FIntVector LowestEntropyCell;
 		if (!FindFowestEntropyCell(LowestEntropyCell))
 		{
-			UE_LOG(LogTemp, Display, TEXT("WaveFunctionCollapse: Finished"));
-			break;
+			break; // We have collapsed all cells -> done
 		}
 
 		// Collapse the lowest-entropy cell
@@ -24,9 +20,8 @@ bool WaveFunctionCollapse::Run(const TArray<FWFC_Block>& Blocks, TMap<FIntVector
 			return false;
 		}
 
-		// Propagate changes
-		PropagationStack.Add(LowestEntropyCell);
-		Propagate(PropagationStack, OutGrid);
+		// Propagate the changes
+		Propagate(LowestEntropyCell, OutGrid);
 	}
 
 	return true;
@@ -42,8 +37,27 @@ void WaveFunctionCollapse::Initialize(const TArray<FWFC_Block>& Blocks, const FI
 
 	for (int i = 0; i < TotalCells; ++i)
 	{
-		Wave[i] = Blocks; // Initialize all cells with all possible blocks
+		Wave[i] = Blocks;
 		Entropies[i] = Blocks.Num();
+	}
+
+	//handle already collapsed cells
+	TMap<FIntVector, FWFC_Block> ToPropagate;
+	for (const auto& Pair : OutGrid)
+	{
+		FIntVector Position = Pair.Key;
+		FWFC_Block Block = Pair.Value;
+		int Index = GetIndex(Position);
+		Wave[Index] = { Block };
+		Entropies[Index] = 1;
+		ToPropagate.Add(Position, Block);
+	}
+
+	//propagate collapsed cells
+	for (const auto& Pair : ToPropagate)
+	{
+		FIntVector Position = Pair.Key;
+		Propagate(Position, OutGrid);
 	}
 }
 
@@ -99,7 +113,7 @@ bool WaveFunctionCollapse::CollapseCell(const FIntVector& Position, TMap<FIntVec
 	return true;
 }
 
-void WaveFunctionCollapse::Propagate(TArray<FIntVector>& PropagationStack, TMap<FIntVector, FWFC_Block>& OutGrid)
+void WaveFunctionCollapse::Propagate(const FIntVector& Position, TMap<FIntVector, FWFC_Block>& OutGrid)
 {
 	const TArray<FIntVector> Directions =
 	{
@@ -110,6 +124,10 @@ void WaveFunctionCollapse::Propagate(TArray<FIntVector>& PropagationStack, TMap<
 			FIntVector(0, 0, 1),
 			FIntVector(0, 0, -1)
 	};
+
+
+	TArray<FIntVector> PropagationStack;
+	PropagationStack.Add(Position);
 
 	while (PropagationStack.Num() > 0)
 	{

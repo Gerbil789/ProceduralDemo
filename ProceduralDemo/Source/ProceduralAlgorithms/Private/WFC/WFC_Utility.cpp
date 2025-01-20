@@ -126,6 +126,13 @@ bool WFC_Utility::SaveData(const FString& AssetPath, const TArray<FWFC_Block>& B
 		}
 	}
 
+	//check if package already exists
+	if (FPackageName::DoesPackageExist(PackageName))
+	{
+		UE_LOG(LogTemp, Error, TEXT("Package already exists: %s"), *PackageName);
+		return false;
+	}
+
 	// Create a new package
 	UPackage* Package = CreatePackage(*PackageName);
 	if (!Package)
@@ -149,7 +156,6 @@ bool WFC_Utility::SaveData(const FString& AssetPath, const TArray<FWFC_Block>& B
 	DataAsset->MarkPackageDirty();
 
 	FString PackageFileName = FPackageName::LongPackageNameToFilename(PackageName, FPackageName::GetAssetPackageExtension());
-	//FString PackageFileName = FPackageName::LongPackageNameToFilename(PackageName, FPackageName::GetAssetPackageExtension());
 	if (!UPackage::SavePackage(Package, DataAsset, RF_Public | RF_Standalone, *PackageFileName))
 	{
 		UE_LOG(LogTemp, Error, TEXT("Failed to save package: %s"), *PackageFileName);
