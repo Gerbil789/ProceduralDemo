@@ -62,7 +62,7 @@ AWFC_BlockActor::AWFC_BlockActor()
 
 void AWFC_BlockActor::Initialize(const FWFC_Block Block, UStaticMesh* WireframeMesh)
 {
-	if (!Block.IsEmpty && !Block.IsFill)
+	if (!Block.IsEmpty())
 	{
 		if (!Block.StaticMesh || !MeshComponent)
 		{
@@ -77,8 +77,7 @@ void AWFC_BlockActor::Initialize(const FWFC_Block Block, UStaticMesh* WireframeM
 	}
 	else
 	{
-		FString Name = Block.IsEmpty ? "Empty" : "Fill";
-		NameComponent->SetText(FText::FromString(Name));
+		NameComponent->SetText(FText::FromString("Empty"));
 	}
 
 	if (TextComponents.Num() != 6)

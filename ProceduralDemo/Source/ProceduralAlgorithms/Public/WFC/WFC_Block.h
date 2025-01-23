@@ -10,6 +10,21 @@ struct PROCEDURALALGORITHMS_API FWFC_Block
 	GENERATED_BODY()
 
 public:
+	FWFC_Block() = default;
+
+	FWFC_Block(UStaticMesh* StaticMesh, const TArray<FWFC_Socket>& Sockets, int Rotation = 0, int Priority = 1) :
+		StaticMesh(StaticMesh),
+		Rotation(Rotation),
+		Priority(Priority),
+		SocketFront(Sockets[0]),
+		SocketBack(Sockets[1]),
+		SocketRight(Sockets[2]),
+		SocketLeft(Sockets[3]),
+		SocketUp(Sockets[4]),
+		SocketDown(Sockets[5])
+	{
+	}
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Block")
 	UStaticMesh* StaticMesh = nullptr;
 
@@ -38,26 +53,7 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Block")
 	FWFC_Socket SocketDown;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Block")
-	bool IsEmpty = false;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Block")
-	bool IsFill = false;
-
-	FWFC_Block() = default;
-
-	FWFC_Block(UStaticMesh* StaticMesh, const TArray<FWFC_Socket>& Sockets, int Rotation = 0, int Priority = 1) :
-		StaticMesh(StaticMesh),
-		Rotation(Rotation),
-		Priority(Priority),
-		SocketFront(Sockets[0]),
-		SocketBack(Sockets[1]),
-		SocketRight(Sockets[2]),
-		SocketLeft(Sockets[3]),
-		SocketUp(Sockets[4]),
-		SocketDown(Sockets[5])
-	{
-	}
+	bool IsEmpty() const { return StaticMesh == nullptr; }
 
 	FString ToString() const
 	{
@@ -75,10 +71,7 @@ public:
 	// Equality operator is required for TMap to work
 	bool operator==(const FWFC_Block& Other) const
 	{
-		return StaticMesh == Other.StaticMesh &&
-			Rotation == Other.Rotation &&
-			IsEmpty == Other.IsEmpty &&
-			IsFill == Other.IsFill;
+		return StaticMesh == Other.StaticMesh && Rotation == Other.Rotation;
 	}
 };
 
@@ -89,7 +82,5 @@ inline uint32 GetTypeHash(const FWFC_Block& Block)
 	uint32 Hash = 0;
 	Hash = HashCombine(Hash, GetTypeHash(Block.StaticMesh));
 	Hash = HashCombine(Hash, GetTypeHash(Block.Rotation));
-	Hash = HashCombine(Hash, GetTypeHash(Block.IsEmpty));
-	Hash = HashCombine(Hash, GetTypeHash(Block.IsFill));
 	return Hash;
 }

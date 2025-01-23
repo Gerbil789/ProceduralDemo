@@ -90,7 +90,6 @@ bool WFC_Utility::LoadBlocksFromDirectory(const FString& DirectoryPath, TArray<F
 		FWFC_Socket EmptySocketVertical = FWFC_Socket(0, false, false, false, true);
 		TArray<FWFC_Socket> EmptySockets = { EmptySocketHorizontal, EmptySocketHorizontal, EmptySocketHorizontal, EmptySocketHorizontal, EmptySocketVertical, EmptySocketVertical };
 		FWFC_Block EmptyBlock = FWFC_Block(nullptr, EmptySockets);
-		EmptyBlock.IsEmpty = true;
 		OutBlocks.Add(EmptyBlock);
 	}
 
@@ -100,7 +99,6 @@ bool WFC_Utility::LoadBlocksFromDirectory(const FString& DirectoryPath, TArray<F
 		FWFC_Socket FillSocketVertical = FWFC_Socket(1, false, false, false, true);
 		TArray<FWFC_Socket> FillSockets = { FillSocketHorizontal, FillSocketHorizontal, FillSocketHorizontal, FillSocketHorizontal, FillSocketVertical, FillSocketVertical };
 		FWFC_Block FillBlock = FWFC_Block(nullptr, FillSockets);
-		FillBlock.IsFill = true;
 		OutBlocks.Add(FillBlock);
 	}
 

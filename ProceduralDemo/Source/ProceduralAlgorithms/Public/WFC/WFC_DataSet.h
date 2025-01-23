@@ -12,7 +12,7 @@ class PROCEDURALALGORITHMS_API UWFC_DataSet : public UObject
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, Category = "WFC")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "WFC")
 	TArray<FWFC_Block> Blocks;
 	
 };

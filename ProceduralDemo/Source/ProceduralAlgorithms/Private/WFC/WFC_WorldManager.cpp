@@ -103,8 +103,8 @@ void AWFC_WorldManager::ProcessNextChunk()
 
       if (ExpandedGrid.Num() != (ExpandedGridSize.X * ExpandedGridSize.Y * ExpandedGridSize.Z))
       {
-        UE_LOG(LogTemp, Error, TEXT("Invalid grid size for chunk: %s"), *ChunkCoordinates.ToString());
-        return;
+        UE_LOG(LogTemp, Error, TEXT("chunk: %s failed to generate"), *ChunkCoordinates.ToString());
+				return;
       }
 
       // Trim expanded grid
@@ -177,7 +177,7 @@ bool AWFC_WorldManager::LoadDataset()
   // Create InstancedStaticMeshComponent for each unique static mesh
   for (const FWFC_Block& Block : Dataset->Blocks)
   {
-    if (!Block.StaticMesh && !Block.IsEmpty && !Block.IsFill)
+    if (!Block.StaticMesh && !Block.IsEmpty())
     {
       UE_LOG(LogTemp, Error, TEXT("Block does not have a valid StaticMesh."));
       return false;

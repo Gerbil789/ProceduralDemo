@@ -52,7 +52,6 @@ void AWFC_BlockPreviewActor::Preview()
     int32 Col = i % Columns;
 
     FVector Location = FVector(Offset * Col, Offset * Row, 0) - GridCenter;
-    //FRotator Rotation = FRotator(0, Blocks[i].Rotation, 0);
 
     AWFC_BlockActor* NewActor = GetWorld()->SpawnActor<AWFC_BlockActor>(Location, FRotator::ZeroRotator);
     if (!NewActor)

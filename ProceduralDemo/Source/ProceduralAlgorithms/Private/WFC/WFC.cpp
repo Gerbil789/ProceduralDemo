@@ -285,28 +285,65 @@ bool WaveFunctionCollapse::CheckCompatibility(const FWFC_Block& CollapsedBlock, 
 	UE_LOG(LogTemp, Error, TEXT("CheckCompatibility: Invalid direction"));
 	return false;
 }
+
 bool WaveFunctionCollapse::FindLowestEntropyCell(FIntVector& OutPosition) const
 {
 	int MinEntropy = TNumericLimits<int>::Max();
-	FIntVector LowestEntropyCell = FIntVector(-1, -1, -1);
+	TArray<FIntVector> LowestEntropyCells; // Store all cells with the minimum entropy
 
+	// Find the minimum entropy and collect all cells with that entropy
 	for (int i = 0; i < Entropies.Num(); ++i)
 	{
 		// Entropy == 1 means the cell is already collapsed
-		if (Entropies[i] > 1 && Entropies[i] < MinEntropy)
+		if (Entropies[i] > 1)
 		{
-			MinEntropy = Entropies[i];
-			LowestEntropyCell = FIntVector(i % GridSize.X, (i / GridSize.X) % GridSize.Y, i / (GridSize.X * GridSize.Y));
+			if (Entropies[i] < MinEntropy)
+			{
+				// Found a new minimum entropy
+				MinEntropy = Entropies[i];
+				LowestEntropyCells.Reset(); // Clear the previous list
+				LowestEntropyCells.Add(FIntVector(i % GridSize.X, (i / GridSize.X) % GridSize.Y, i / (GridSize.X * GridSize.Y)));
+			}
+			else if (Entropies[i] == MinEntropy)
+			{
+				// Found another cell with the same minimum entropy
+				LowestEntropyCells.Add(FIntVector(i % GridSize.X, (i / GridSize.X) % GridSize.Y, i / (GridSize.X * GridSize.Y)));
+			}
 		}
 	}
 
 	// If no cell has entropy > 1, we are done
-	if (LowestEntropyCell == FIntVector(-1, -1, -1))
+	if (LowestEntropyCells.Num() == 0)
 	{
 		UE_LOG(LogTemp, Display, TEXT("WaveFunctionCollapse: No cell found"));
 		return false;
 	}
 
-	OutPosition = LowestEntropyCell;
+	// Sort cells by Z coordinate (ascending order)
+	Algo::Sort(LowestEntropyCells, [](const FIntVector& A, const FIntVector& B)
+		{
+			return A.Z < B.Z; // Sort by Z coordinate
+		});
+
+	// Find all cells with the lowest Z coordinate
+	int LowestZ = LowestEntropyCells[0].Z; // The lowest Z coordinate after sorting
+	TArray<FIntVector> LowestZCells;
+
+	for (const FIntVector& Cell : LowestEntropyCells)
+	{
+		if (Cell.Z == LowestZ)
+		{
+			LowestZCells.Add(Cell);
+		}
+		else
+		{
+			break; // All remaining cells have higher Z coordinates
+		}
+	}
+
+	// Randomly select one of the cells with the lowest Z coordinate
+	int RandomIndex = FMath::RandRange(0, LowestZCells.Num() - 1);
+	OutPosition = LowestZCells[RandomIndex];
+
 	return true;
 }

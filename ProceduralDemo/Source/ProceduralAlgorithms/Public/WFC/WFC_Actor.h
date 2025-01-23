@@ -20,10 +20,18 @@ public:
 protected:
 	virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent);
 
-private:
-	UFUNCTION(CallInEditor, Category = "WFC")
+	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "WFC")
 	void GenerateMesh();
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "WFC")
+	UWFC_DataSet* Dataset = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "WFC")
+	FIntVector GridSize = FIntVector(10, 10, 1);
+
+	UPROPERTY(BlueprintReadWrite, Category = "WFC")
+	TMap<FIntVector, FWFC_Block> Grid;
+private:
 	UFUNCTION(CallInEditor, Category = "WFC")
 	void CleanUpMesh();
 
@@ -32,16 +40,9 @@ private:
 	bool Render();
 
 	UPROPERTY(EditAnywhere, Category = "WFC")
-	UWFC_DataSet* Dataset = nullptr;
-
-	UPROPERTY(EditAnywhere, Category = "WFC")
-	FIntVector GridSize = FIntVector(10, 10, 1);
-
-	UPROPERTY(EditAnywhere, Category = "WFC")
 	int Offset = 200;
 
 	WaveFunctionCollapse WFC = WaveFunctionCollapse();
-	TMap<FIntVector, FWFC_Block> Grid;
+
 	TMap<UStaticMesh*, UInstancedStaticMeshComponent*> ISMComponents = TMap<UStaticMesh*, UInstancedStaticMeshComponent*>();
 };
-

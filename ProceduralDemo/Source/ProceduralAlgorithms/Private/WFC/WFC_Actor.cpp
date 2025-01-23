@@ -55,7 +55,7 @@ bool AWFC_Actor::LoadDataset()
 	// Create InstancedStaticMeshComponent for each unique static mesh
 	for (const FWFC_Block& Block : Dataset->Blocks)
 	{
-		if (!Block.StaticMesh && !Block.IsEmpty && !Block.IsFill)
+		if (!Block.StaticMesh && !Block.IsEmpty())
 		{
 			UE_LOG(LogTemp, Error, TEXT("Block does not have a valid StaticMesh."));
 			return false;
@@ -89,9 +89,9 @@ bool AWFC_Actor::LoadDataset()
 	return true;
 }
 
-void AWFC_Actor::GenerateMesh()
+void AWFC_Actor::GenerateMesh_Implementation()
 {
-	CleanUpMesh();
+	//CleanUpMesh();
 
 	if (!WFC.IsInitialized()) 
 	{
@@ -152,8 +152,6 @@ void AWFC_Actor::GenerateMesh()
 void AWFC_Actor::CleanUpMesh()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Cleaning up"));
-
-	// Clear the InstancedStaticMeshComponents
 	for(auto& Pair : ISMComponents)
 	{
 		if (Pair.Value)
