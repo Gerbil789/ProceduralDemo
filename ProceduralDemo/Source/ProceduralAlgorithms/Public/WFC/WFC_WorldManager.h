@@ -2,15 +2,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Components/InstancedStaticMeshComponent.h"
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "WFC/WFC_Block.h"
 #include "WFC/WFC_DataSet.h"
+#include "WFC/WFC.h"
 #include "WFC_WorldManager.generated.h"
-
-//struct Chunk
-//{
-//  TMap<FIntVector, FWFC_Block> Grid;
-//};
 
 UCLASS()
 class PROCEDURALALGORITHMS_API AWFC_WorldManager : public AActor
@@ -27,8 +23,8 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 private:
-	APawn* PlayerPawn;
-	FVector PlayerPosition;
+	APawn* PlayerPawn = nullptr;
+	FVector PlayerPosition = FVector();
 
   UPROPERTY(EditAnywhere, Category = "WFC")
   UWFC_DataSet* Dataset = nullptr;
@@ -45,16 +41,17 @@ private:
   UPROPERTY(EditAnywhere, Category = "WFC")
   int32 UnloadDistance = 4;
 
+  WaveFunctionCollapse WFC = WaveFunctionCollapse();
 
   TSet<FIntVector> LoadedChunks; // Set of currently loaded chunks
   TMap<FIntVector, FWFC_Block> Grid; 
-  TMap<UStaticMesh*, UInstancedStaticMeshComponent*> ISMComponents = TMap<UStaticMesh*, UInstancedStaticMeshComponent*>();
-
+  TMap<UStaticMesh*, UHierarchicalInstancedStaticMeshComponent*> HISMComponents;
+  TQueue<FIntVector> ChunkGenerationQueue; // Queue for chunk generation
+  bool bIsGeneratingChunk = false; // Flag to track if a chunk is being generated
+  void ProcessNextChunk(); // Function to process the next chunk in the queue
   bool LoadDataset();
 
   FIntVector GetChunkCoordinates(const FVector& Position) const;
   void UpdateChunks();
-  void LoadChunk(const FIntVector& ChunkCoordinates);
-  void UnloadChunk(const FIntVector& ChunkCoordinates);
-
+  //void UnloadChunk(const FIntVector& ChunkCoordinates);
 };

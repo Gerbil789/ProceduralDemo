@@ -1,6 +1,6 @@
 #include "WFC/WFC_Actor.h"
 #include "WFC/WFC_Utility.h"
-#include "WFC/WFC.h"
+
 
 AWFC_Actor::AWFC_Actor()
 {
@@ -10,19 +10,17 @@ AWFC_Actor::AWFC_Actor()
 }
 
 // Reload dataset when changed
-void AWFC_Actor::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+void AWFC_Actor::PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent)
 {
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-
+#if WITH_EDITOR
+	Super::PostEditChangeChainProperty(PropertyChangedEvent);
+#endif
 	// Get the name of the changed property
-	FName PropertyName = (PropertyChangedEvent.Property != nullptr)
-		? PropertyChangedEvent.Property->GetFName()
-		: NAME_None;
+	FName PropertyName = (PropertyChangedEvent.Property != nullptr) ? PropertyChangedEvent.Property->GetFName() : NAME_None;
 
 	// Check if the changed property is the "Dataset" property
 	if (PropertyName == GET_MEMBER_NAME_CHECKED(AWFC_Actor, Dataset))
 	{
-		// Call your custom function or handle the change
 		UE_LOG(LogTemp, Log, TEXT("Dataset property changed!"));
 		LoadDataset();
 	}
@@ -42,7 +40,7 @@ bool AWFC_Actor::LoadDataset()
 		return false;
 	}
 
-	Blocks = Dataset->Blocks;
+	WFC.SetBlocks(Dataset->Blocks);
 
 	// Clear the InstancedStaticMeshComponents
 	for (auto& Pair : ISMComponents)
@@ -55,7 +53,7 @@ bool AWFC_Actor::LoadDataset()
 	ISMComponents.Empty();
 
 	// Create InstancedStaticMeshComponent for each unique static mesh
-	for (const FWFC_Block& Block : Blocks)
+	for (const FWFC_Block& Block : Dataset->Blocks)
 	{
 		if (!Block.StaticMesh && !Block.IsEmpty && !Block.IsFill)
 		{
@@ -84,9 +82,10 @@ bool AWFC_Actor::LoadDataset()
 
 		ISMComponents.Add(Block.StaticMesh, ISMComp);
 
-		UE_LOG(LogTemp, Display, TEXT("Created and registered InstancedStaticMeshComponent for mesh: %s"), *Block.ToString());
+		//UE_LOG(LogTemp, Display, TEXT("Created and registered InstancedStaticMeshComponent for mesh: %s"), *Block.ToString());
 	}
 
+	UE_LOG(LogTemp, Display, TEXT("Loaded %d blocks."), Dataset->Blocks.Num());
 	return true;
 }
 
@@ -94,15 +93,9 @@ void AWFC_Actor::GenerateMesh()
 {
 	CleanUpMesh();
 
-	if (Blocks.Num() == 0)
+	if (!WFC.IsInitialized()) 
 	{
-		UE_LOG(LogTemp, Warning, TEXT("No blocks loaded. Loading..."));
-		if(!LoadDataset())
-		{
-			UE_LOG(LogTemp, Error, TEXT("No blocks loaded."));
-			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("No blocks loaded."), FText::FromString(__FUNCTION__));
-			return;
-		}
+		LoadDataset();
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("----------------------- GENERATING MESH -----------------------"));
@@ -127,8 +120,8 @@ void AWFC_Actor::GenerateMesh()
 	//FIntVector TmpSize = GridSize;
 	//TmpSize.Y++;
 
-	WaveFunctionCollapse WFC_Algorithm;
-	if (!WFC_Algorithm.Run(Blocks, Grid, GridSize))
+
+	if (!WFC.Run(Grid, GridSize))
 	{
 		UE_LOG(LogTemp, Error, TEXT("Failed to generate grid."));
 		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("Failed to generate grid."), FText::FromString(__FUNCTION__));

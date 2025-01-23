@@ -63,12 +63,33 @@ public:
 	{
 		return FString::Printf(
 			TEXT("%s_%s_%s_%s_%s_%s"),
-			*SocketUp.ToString(),
-			*SocketDown.ToString(),
-			*SocketLeft.ToString(),
-			*SocketRight.ToString(),
 			*SocketFront.ToString(),
-			*SocketBack.ToString()
+			*SocketBack.ToString(),
+			*SocketRight.ToString(),
+			*SocketLeft.ToString(),
+			*SocketUp.ToString(),
+			*SocketDown.ToString()
 		);
 	}
+
+	// Equality operator is required for TMap to work
+	bool operator==(const FWFC_Block& Other) const
+	{
+		return StaticMesh == Other.StaticMesh &&
+			Rotation == Other.Rotation &&
+			IsEmpty == Other.IsEmpty &&
+			IsFill == Other.IsFill;
+	}
 };
+
+// Hash function is required for TMap to work
+inline uint32 GetTypeHash(const FWFC_Block& Block)
+{
+	// Combine hash values of the block's members
+	uint32 Hash = 0;
+	Hash = HashCombine(Hash, GetTypeHash(Block.StaticMesh));
+	Hash = HashCombine(Hash, GetTypeHash(Block.Rotation));
+	Hash = HashCombine(Hash, GetTypeHash(Block.IsEmpty));
+	Hash = HashCombine(Hash, GetTypeHash(Block.IsFill));
+	return Hash;
+}

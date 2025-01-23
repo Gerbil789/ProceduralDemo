@@ -39,8 +39,10 @@ bool WFC_Utility::LoadBlocksFromDirectory(const FString& DirectoryPath, TArray<F
 	}
 
 	// Create a progress dialog
+#if WITH_EDITOR
 	FScopedSlowTask ProgressTask(AssetDataArray.Num(), FText::FromString(TEXT("Processing meshes...")));
 	ProgressTask.MakeDialog(); // Show progress dialog
+#endif
 
 	int StaticMeshCount = 0;
 	int SuccessCount = 0;
@@ -48,7 +50,9 @@ bool WFC_Utility::LoadBlocksFromDirectory(const FString& DirectoryPath, TArray<F
 	// Process each asset in the directory
 	for (const FAssetData& AssetData : AssetDataArray)
 	{
+#if WITH_EDITOR
 		ProgressTask.EnterProgressFrame(1.0f); // Update progress dialog
+#endif
 		UStaticMesh* StaticMesh = Cast<UStaticMesh>(AssetData.GetAsset());
 		if (!StaticMesh)
 		{
@@ -156,6 +160,7 @@ bool WFC_Utility::SaveData(const FString& AssetPath, const TArray<FWFC_Block>& B
 	DataAsset->MarkPackageDirty();
 
 	FString PackageFileName = FPackageName::LongPackageNameToFilename(PackageName, FPackageName::GetAssetPackageExtension());
+
 	if (!UPackage::SavePackage(Package, DataAsset, RF_Public | RF_Standalone, *PackageFileName))
 	{
 		UE_LOG(LogTemp, Error, TEXT("Failed to save package: %s"), *PackageFileName);
@@ -164,6 +169,7 @@ bool WFC_Utility::SaveData(const FString& AssetPath, const TArray<FWFC_Block>& B
 
 	UE_LOG(LogTemp, Log, TEXT("Data asset '%s' saved at '%s'"), *PackageName, *PackageFileName);
 	return true;
+
 }
 
 bool WFC_Utility::CreateBlocks(const FString& AssetName, UStaticMesh* Mesh, TArray<FWFC_Block>& OutBlocks)

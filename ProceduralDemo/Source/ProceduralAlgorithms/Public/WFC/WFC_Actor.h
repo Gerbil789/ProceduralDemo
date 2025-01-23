@@ -4,7 +4,9 @@
 #include "GameFramework/Actor.h"
 #include "WFC_Block.h"
 #include "WFC_DataSet.h"
+#include "WFC/WFC.h"
 #include "Components/InstancedStaticMeshComponent.h"
+#include "UObject/UnrealType.h"
 #include "WFC_Actor.generated.h"
 
 UCLASS()
@@ -14,7 +16,20 @@ class PROCEDURALALGORITHMS_API AWFC_Actor : public AActor
 
 public:
 	AWFC_Actor();
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+
+protected:
+	virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent);
+
+private:
+	UFUNCTION(CallInEditor, Category = "WFC")
+	void GenerateMesh();
+
+	UFUNCTION(CallInEditor, Category = "WFC")
+	void CleanUpMesh();
+
+	bool LoadDataset();
+
+	bool Render();
 
 	UPROPERTY(EditAnywhere, Category = "WFC")
 	UWFC_DataSet* Dataset = nullptr;
@@ -22,20 +37,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "WFC")
 	FIntVector GridSize = FIntVector(10, 10, 1);
 
-	UFUNCTION(CallInEditor, Category = "WFC")
-	void GenerateMesh();
-
-	bool LoadDataset();
-private:
-	UFUNCTION(CallInEditor, Category = "WFC")
-	void CleanUpMesh();
-
-	bool Render();
-
 	UPROPERTY(EditAnywhere, Category = "WFC")
 	int Offset = 200;
 
-	TArray<FWFC_Block> Blocks;
+	WaveFunctionCollapse WFC = WaveFunctionCollapse();
 	TMap<FIntVector, FWFC_Block> Grid;
 	TMap<UStaticMesh*, UInstancedStaticMeshComponent*> ISMComponents = TMap<UStaticMesh*, UInstancedStaticMeshComponent*>();
 };

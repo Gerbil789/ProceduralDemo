@@ -1,5 +1,4 @@
 #include "WFC/WFC_WorldManager.h"
-#include "WFC/WFC.h"
 #include "Kismet/GameplayStatics.h"
 
 AWFC_WorldManager::AWFC_WorldManager()
@@ -48,8 +47,109 @@ void AWFC_WorldManager::Tick(float DeltaTime)
 
 	PlayerPosition = PlayerPawn->GetActorLocation();
 	UpdateChunks();
+
+	if (!bIsGeneratingChunk && !ChunkGenerationQueue.IsEmpty())
+	{
+		ProcessNextChunk();
+	}
 }
 
+void AWFC_WorldManager::ProcessNextChunk()
+{
+  if (ChunkGenerationQueue.IsEmpty())
+  {
+    return;
+  }
+
+  // Mark that a chunk is being generated
+  bIsGeneratingChunk = true;
+
+  FIntVector ChunkCoordinates;
+  ChunkGenerationQueue.Dequeue(ChunkCoordinates);
+
+  // Offload chunk generation to a background thread
+  AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [this, ChunkCoordinates]()
+    {
+      // Generate the chunk data in the background
+      FIntVector GridCoordinates = FIntVector(ChunkCoordinates.X * GridSize.X, ChunkCoordinates.Y * GridSize.Y, 0);
+      TMap<FIntVector, FWFC_Block> ExpandedGrid;
+      ExpandedGrid.Reserve((GridSize.X + 2) * (GridSize.Y + 2) * GridSize.Z);
+
+      for (int x = -1; x <= GridSize.X; x++)
+      {
+        for (int y = -1; y <= GridSize.Y; y++)
+        {
+          for (int z = 0; z < GridSize.Z; z++)
+          {
+            if (x == -1 || y == -1 || x == GridSize.X || y == GridSize.Y)
+            {
+              FIntVector Position = FIntVector(x, y, z) + GridCoordinates;
+
+              if (Grid.Contains(Position))
+              {
+                ExpandedGrid.Add(FIntVector(x + 1, y + 1, 0), Grid[Position]);
+              }
+            }
+          }
+        }
+      }
+
+      FIntVector ExpandedGridSize = FIntVector(GridSize.X + 2, GridSize.Y + 2, GridSize.Z);
+      if (!WFC.Run(ExpandedGrid, ExpandedGridSize))
+      {
+        UE_LOG(LogTemp, Error, TEXT("Failed to generate grid for chunk: %s"), *ChunkCoordinates.ToString());
+        return;
+      }
+
+      if (ExpandedGrid.Num() != (ExpandedGridSize.X * ExpandedGridSize.Y * ExpandedGridSize.Z))
+      {
+        UE_LOG(LogTemp, Error, TEXT("Invalid grid size for chunk: %s"), *ChunkCoordinates.ToString());
+        return;
+      }
+
+      // Trim expanded grid
+      TMap<FIntVector, FWFC_Block> NewGridData;
+      NewGridData.Reserve(GridSize.X * GridSize.Y * GridSize.Z);
+      for (int x = 1; x <= GridSize.X; x++)
+      {
+        for (int y = 1; y <= GridSize.Y; y++)
+        {
+          for (int z = 0; z < GridSize.Z; z++)
+          {
+            FWFC_Block Block = ExpandedGrid[FIntVector(x, y, z)];
+            FIntVector Position = GridCoordinates + FIntVector(x - 1, y - 1, z);
+            NewGridData.Add(Position, Block);
+            Grid.Add(Position, Block);
+          }
+        }
+      }
+
+      // Switch back to the game thread to update the world
+      AsyncTask(ENamedThreads::GameThread, [this, ChunkCoordinates, NewGridData]()
+        {
+          for (auto& Pair : NewGridData)
+          {
+            FIntVector Position = Pair.Key;
+            FWFC_Block Block = Pair.Value;
+            if (HISMComponents.Contains(Block.StaticMesh))
+            {
+              UHierarchicalInstancedStaticMeshComponent* HISMComp = HISMComponents[Block.StaticMesh];
+              HISMComp->AddInstance(FTransform(FRotator(0, Block.Rotation, 0), FVector(Position * Offset)));
+            }
+          }
+
+          // Mark the chunk as loaded
+          LoadedChunks.Add(ChunkCoordinates);
+          UE_LOG(LogTemp, Log, TEXT("Loaded Chunk: %s"), *ChunkCoordinates.ToString());
+
+          // Mark that chunk generation is complete
+          bIsGeneratingChunk = false;
+
+          // Process the next chunk in the queue
+          ProcessNextChunk();
+        });
+    });
+}
 bool AWFC_WorldManager::LoadDataset()
 {
   if (!Dataset)
@@ -65,14 +165,14 @@ bool AWFC_WorldManager::LoadDataset()
   }
 
   // Clear the InstancedStaticMeshComponents
-  for (auto& Pair : ISMComponents)
+  for (auto& Pair : HISMComponents)
   {
     if (Pair.Value)
     {
       Pair.Value->DestroyComponent();
     }
   }
-  ISMComponents.Empty();
+  HISMComponents.Empty();
 
   // Create InstancedStaticMeshComponent for each unique static mesh
   for (const FWFC_Block& Block : Dataset->Blocks)
@@ -83,29 +183,32 @@ bool AWFC_WorldManager::LoadDataset()
       return false;
     }
 
-    if (ISMComponents.Contains(Block.StaticMesh))
+    if (HISMComponents.Contains(Block.StaticMesh))
     {
       continue;	// No need for duplicate ISM components
     }
 
     FName ComponentName = FName(Block.ToString());
-    UInstancedStaticMeshComponent* ISMComp = NewObject<UInstancedStaticMeshComponent>(this, ComponentName);
+    UHierarchicalInstancedStaticMeshComponent* HISMComp = NewObject<UHierarchicalInstancedStaticMeshComponent>(this, ComponentName);
 
-    if (!ISMComp)
+    if (!HISMComp)
     {
       UE_LOG(LogTemp, Error, TEXT("Failed to create InstancedStaticMeshComponent for block."));
       return false;
     }
 
-    ISMComp->SetupAttachment(RootComponent, ComponentName);
-    ISMComp->SetStaticMesh(Block.StaticMesh);
-    ISMComp->bUseDefaultCollision = true;
-    ISMComp->RegisterComponent();
+    HISMComp->SetupAttachment(RootComponent, ComponentName);
+    HISMComp->SetStaticMesh(Block.StaticMesh);
+    HISMComp->SetCullDistances(0, 10000);
+    HISMComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); // Enable collision
+    HISMComp->RegisterComponent();
 
-    ISMComponents.Add(Block.StaticMesh, ISMComp);
+    HISMComponents.Add(Block.StaticMesh, HISMComp);
 
     UE_LOG(LogTemp, Display, TEXT("Created and registered InstancedStaticMeshComponent for mesh: %s"), *Block.ToString());
   }
+
+	WFC.SetBlocks(Dataset->Blocks);
 
   return true;
 }
@@ -119,20 +222,6 @@ void AWFC_WorldManager::UpdateChunks()
 {
   FIntVector PlayerChunk = GetChunkCoordinates(PlayerPosition);
 
-  // Unload chunks that are too far away
-  //TArray<FIntVector> ChunksToUnload;
-  //for (const FIntVector& Chunk : LoadedChunks)
-  //{
-  //  if (FMath::Abs(Chunk.X - PlayerChunk.X) > UnloadDistance || FMath::Abs(Chunk.Y - PlayerChunk.Y) > UnloadDistance)
-  //  {
-  //    ChunksToUnload.Add(Chunk);
-  //  }
-  //}
-  //for (const FIntVector& Chunk : ChunksToUnload)
-  //{
-  //  UnloadChunk(Chunk);
-  //}
-
   // Load chunks within range
   for (int32 X = PlayerChunk.X - LoadDistance; X <= PlayerChunk.X + LoadDistance; ++X)
   {
@@ -141,122 +230,59 @@ void AWFC_WorldManager::UpdateChunks()
       FIntVector ChunkCoordinates(X, Y, 0);
       if (!LoadedChunks.Contains(ChunkCoordinates))
       {
-        LoadChunk(ChunkCoordinates);
+        //LoadChunk(ChunkCoordinates);
+				ChunkGenerationQueue.Enqueue(ChunkCoordinates);
+				LoadedChunks.Add(ChunkCoordinates); // Mark the chunk as "loading"
       }
     }
   }
 }
 
-void AWFC_WorldManager::LoadChunk(const FIntVector& ChunkCoordinates)
-{
-	FIntVector GridCoordinates = FIntVector(ChunkCoordinates.X * GridSize.X, ChunkCoordinates.Y * GridSize.Y, 0);
-  TMap<FIntVector, FWFC_Block> ExpandedGrid;
-	ExpandedGrid.Reserve((GridSize.X + 2) * (GridSize.Y + 2) * GridSize.Z);
-
-	for (int x = -1; x <= GridSize.X; x++)
-	{
-		for (int y = -1; y <= GridSize.Y; y++)
-		{
-			for (int z = 0; z < GridSize.Z; z++)
-			{
-				if (x == -1 || y == -1 || x == GridSize.X || y == GridSize.Y)
-				{
-					FIntVector Position = FIntVector(x, y, z) + GridCoordinates;
-
-					if (Grid.Contains(Position))
-					{
-						ExpandedGrid.Add(FIntVector(x + 1, y + 1, 0), Grid[Position]);
-					}
-				}
-			}
-		}
-	}
-
-	WaveFunctionCollapse WFC;
-	FIntVector ExpandedGridSize = FIntVector(GridSize.X + 2, GridSize.Y + 2, GridSize.Z);
-	if (!WFC.Run(Dataset->Blocks, ExpandedGrid, ExpandedGridSize))
-	{
-		UE_LOG(LogTemp, Error, TEXT("Failed to generate grid for chunk: %s"), *ChunkCoordinates.ToString());
-		return;
-	}
-
-	if (ExpandedGrid.Num() != (ExpandedGridSize.X * ExpandedGridSize.Y * ExpandedGridSize.Z))
-	{
-		UE_LOG(LogTemp, Error, TEXT("Invalid grid size for chunk: %s"), *ChunkCoordinates.ToString());
-		return;
-	}
-
-	// trim expanded grid
-	TMap<FIntVector, FWFC_Block> NewGridData;
-	NewGridData.Reserve(GridSize.X * GridSize.Y * GridSize.Z);
-	for (int x = 1; x <= GridSize.X; x++)
-	{
-		for (int y = 1; y <= GridSize.Y; y++)
-		{
-			for (int z = 0; z < GridSize.Z; z++)
-			{
-				FWFC_Block Block = ExpandedGrid[FIntVector(x, y, z)];
-				FIntVector Position = GridCoordinates + FIntVector(x - 1, y - 1, z);
-				NewGridData.Add(Position, Block);
-				Grid.Add(Position, Block);
-			}
-		}
-	}
-
-	for (auto& Pair : NewGridData)
-	{
-		FIntVector Position = Pair.Key;
-		FWFC_Block Block = Pair.Value;
-		if (ISMComponents.Contains(Block.StaticMesh))
-		{
-			UInstancedStaticMeshComponent* ISMComp = ISMComponents[Block.StaticMesh];
-			ISMComp->AddInstance(FTransform(FRotator(0, Block.Rotation, 0), FVector(Position * Offset)));
-		}
-	}
-
-	LoadedChunks.Add(ChunkCoordinates);
-	UE_LOG(LogTemp, Log, TEXT("Loaded Chunk: %s"), *ChunkCoordinates.ToString());
-}
-
-void AWFC_WorldManager::UnloadChunk(const FIntVector& ChunkCoordinates)
-{
-	//if (!LoadedChunks.Contains(ChunkCoordinates))
-	//{
-	//	return;
-	//}
-
-	//Chunk& Chunk = Chunks[ChunkCoordinates];
 
 
-	//for (auto& Pair : Chunk.Grid)
-	//{
-	//	FIntVector Position = Pair.Key;
-	//	FWFC_Block Block = Pair.Value;
 
-	//	if (Block.IsEmpty || Block.IsFill)
-	//	{
-	//		continue;
-	//	}
 
-	//	if (!ISMComponents.Contains(Block.StaticMesh))
-	//	{
-	//		UE_LOG(LogTemp, Error, TEXT("UnloadChunk: Block does not have a valid StaticMesh."));
-	//		continue;
-	//	}
-
-	//	UInstancedStaticMeshComponent* ISMComp = ISMComponents[Block.StaticMesh];
-
-	//	if (!ISMComp)
-	//	{
-	//		UE_LOG(LogTemp, Error, TEXT("UnloadChunk: Invalid InstancedStaticMeshComponent."));
-	//		continue;
-	//	}
-
-	//	//ISMComp->RemoveInstance();
-
-	//}
-	//LoadedChunks.Remove(ChunkCoordinates);
-	//Chunks.Remove(ChunkCoordinates);
-	//UE_LOG(LogTemp, Log, TEXT("Unloaded Chunk: %s"), *ChunkCoordinates.ToString());
-
-}
+//
+//
+//void AWFC_WorldManager::UnloadChunk(const FIntVector& ChunkCoordinates)
+//{
+//	//if (!LoadedChunks.Contains(ChunkCoordinates))
+//	//{
+//	//	return;
+//	//}
+//
+//	//Chunk& Chunk = Chunks[ChunkCoordinates];
+//
+//
+//	//for (auto& Pair : Chunk.Grid)
+//	//{
+//	//	FIntVector Position = Pair.Key;
+//	//	FWFC_Block Block = Pair.Value;
+//
+//	//	if (Block.IsEmpty || Block.IsFill)
+//	//	{
+//	//		continue;
+//	//	}
+//
+//	//	if (!ISMComponents.Contains(Block.StaticMesh))
+//	//	{
+//	//		UE_LOG(LogTemp, Error, TEXT("UnloadChunk: Block does not have a valid StaticMesh."));
+//	//		continue;
+//	//	}
+//
+//	//	UInstancedStaticMeshComponent* ISMComp = ISMComponents[Block.StaticMesh];
+//
+//	//	if (!ISMComp)
+//	//	{
+//	//		UE_LOG(LogTemp, Error, TEXT("UnloadChunk: Invalid InstancedStaticMeshComponent."));
+//	//		continue;
+//	//	}
+//
+//	//	//ISMComp->RemoveInstance();
+//
+//	//}
+//	//LoadedChunks.Remove(ChunkCoordinates);
+//	//Chunks.Remove(ChunkCoordinates);
+//	//UE_LOG(LogTemp, Log, TEXT("Unloaded Chunk: %s"), *ChunkCoordinates.ToString());
+//
+//}
