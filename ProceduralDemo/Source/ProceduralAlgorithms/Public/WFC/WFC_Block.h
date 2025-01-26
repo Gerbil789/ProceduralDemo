@@ -25,7 +25,7 @@ public:
 	{
 	}
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Block")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Block")
 	UStaticMesh* StaticMesh = nullptr;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Block")
@@ -35,22 +35,22 @@ public:
 	int Priority = 1;
 
 	// Sockets
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Block")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block")
 	FWFC_Socket SocketFront;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Block")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block")
 	FWFC_Socket SocketBack;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Block")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block")
 	FWFC_Socket SocketRight;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Block")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block")
 	FWFC_Socket SocketLeft;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Block")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block")
 	FWFC_Socket SocketUp;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Block")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block")
 	FWFC_Socket SocketDown;
 
 	bool IsEmpty() const { return StaticMesh == nullptr; }
@@ -84,3 +84,18 @@ inline uint32 GetTypeHash(const FWFC_Block& Block)
 	Hash = HashCombine(Hash, GetTypeHash(Block.Rotation));
 	return Hash;
 }
+
+
+
+// The UObject class that will hold a FWFC_Block instance
+UCLASS(BlueprintType, Blueprintable)
+class PROCEDURALALGORITHMS_API UWFC_BlockAsset : public UPrimaryDataAsset
+{
+	GENERATED_BODY()
+
+public:
+	UWFC_BlockAsset() = default;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block")
+	FWFC_Block Block;
+};

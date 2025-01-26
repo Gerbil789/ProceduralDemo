@@ -26,18 +26,18 @@ void AWFC_Actor::PostEditChangeChainProperty(FPropertyChangedChainEvent& Propert
 	}
 }
 
-bool AWFC_Actor::LoadDataset()
+void AWFC_Actor::LoadDataset()
 {
 	if(!Dataset)
 	{
 		UE_LOG(LogTemp, Error, TEXT("No data set assigned."));
-		return false;
+		return;
 	}
 
 	if (Dataset->Blocks.Num() == 0)
 	{
 		UE_LOG(LogTemp, Error, TEXT("No blocks in data set."));
-		return false;
+		return;
 	}
 
 	WFC.SetBlocks(Dataset->Blocks);
@@ -58,7 +58,7 @@ bool AWFC_Actor::LoadDataset()
 		if (!Block.StaticMesh && !Block.IsEmpty())
 		{
 			UE_LOG(LogTemp, Error, TEXT("Block does not have a valid StaticMesh."));
-			return false;
+			return;
 		}
 
 		if (ISMComponents.Contains(Block.StaticMesh))
@@ -72,7 +72,7 @@ bool AWFC_Actor::LoadDataset()
 		if (!ISMComp)
 		{
 			UE_LOG(LogTemp, Error, TEXT("Failed to create InstancedStaticMeshComponent for block."));
-			return false;
+			return;
 		}
 
 		ISMComp->SetupAttachment(RootComponent, ComponentName);
@@ -81,65 +81,20 @@ bool AWFC_Actor::LoadDataset()
 		ISMComp->RegisterComponent();
 
 		ISMComponents.Add(Block.StaticMesh, ISMComp);
-
-		//UE_LOG(LogTemp, Display, TEXT("Created and registered InstancedStaticMeshComponent for mesh: %s"), *Block.ToString());
 	}
 
 	UE_LOG(LogTemp, Display, TEXT("Loaded %d blocks."), Dataset->Blocks.Num());
-	return true;
 }
 
 void AWFC_Actor::GenerateMesh_Implementation()
 {
-	//CleanUpMesh();
+	CleanUpMesh();
 
-	if (!WFC.IsInitialized()) 
+	if (!RunWFC())
 	{
-		LoadDataset();
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("----------------------- GENERATING MESH -----------------------"));
-
-	// TEST
-	//for(int x = 0; x < GridSize.X; x++)
-	//{
-	//	for (int y = 0; y < GridSize.Y; y++)
-	//	{
-	//		if (x == 0 || y == 0 || x == GridSize.X - 1 || y == GridSize.Y - 1)
-	//		{
-	//			Grid.Add(FIntVector(x, y, 0), FWFC_Block(Blocks[0]));
-	//		}
-	//	}
-	//}
-
-	//for (int x = 0; x < GridSize.X; x++)
-	//{
-	//	Grid.Add(FIntVector(x, GridSize.Y, 0), FWFC_Block(Blocks[0]));
-	//}
-
-	//FIntVector TmpSize = GridSize;
-	//TmpSize.Y++;
-
-
-	if (!WFC.Run(Grid, GridSize))
-	{
-		UE_LOG(LogTemp, Error, TEXT("Failed to generate grid."));
-		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("Failed to generate grid."), FText::FromString(__FUNCTION__));
+		UE_LOG(LogTemp, Error, TEXT("Failed to run WFC."));
+		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("Failed to run WFC."), FText::FromString(__FUNCTION__));
 		return;
-	}
-
-	if (Grid.Num() == 0) 
-	{
-		UE_LOG(LogTemp, Error, TEXT("No cells generated."));
-		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString("No cells generated."), FText::FromString(__FUNCTION__));
-		return;
-	}
-
-	int TotalCells = GridSize.X * GridSize.Y * GridSize.Z;
-	if(Grid.Num() < TotalCells)
-	{
-		//The reason for this is very likely bad input data
-		UE_LOG(LogTemp, Error, TEXT("Failed to generate all cells. Generated %d/%d cells."), Grid.Num(), TotalCells);
 	}
 
 	if (!Render())
@@ -159,9 +114,53 @@ void AWFC_Actor::CleanUpMesh()
 			Pair.Value->ClearInstances();
 		}
 	}
-
-	// Clear the grid
 	Grid.Empty();
+}
+
+bool AWFC_Actor::RunWFC()
+{
+	if (!Grid.IsEmpty())
+	{
+		int newBlocks = 0;
+		for (auto& Pair : Grid)
+		{
+			const FWFC_Block& Block = Pair.Value;
+			const FIntVector& Position = Pair.Key;
+
+			if(!Dataset->Blocks.Contains(Block))
+			{
+				Dataset->Blocks.Add(Block);
+				newBlocks++;
+			}
+		}
+		if (newBlocks > 0)
+		{
+			LoadDataset();
+		}
+	}
+
+	if (!WFC.IsInitialized())
+	{
+		LoadDataset();
+	}
+
+	if (!WFC.Run(Grid, GridSize))
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to generate grid."));
+		return false;
+	}
+
+	int TotalCells = GridSize.X * GridSize.Y * GridSize.Z;
+	if (Grid.Num() < TotalCells)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to generate all cells. Generated %d/%d cells."), Grid.Num(), TotalCells);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Log, TEXT("Generated %d/%d cells."), Grid.Num(), TotalCells);
+	}
+
+	return true;
 }
 
 bool AWFC_Actor::Render()

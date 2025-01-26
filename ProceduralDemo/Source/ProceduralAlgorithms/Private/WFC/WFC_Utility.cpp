@@ -131,8 +131,10 @@ bool WFC_Utility::SaveData(const FString& AssetPath, const TArray<FWFC_Block>& B
 	//check if package already exists
 	if (FPackageName::DoesPackageExist(PackageName))
 	{
-		UE_LOG(LogTemp, Error, TEXT("Package already exists: %s"), *PackageName);
-		return false;
+		if (FMessageDialog::Open(EAppMsgType::OkCancel, FText::FromString(FString::Printf(TEXT("Package already exists: %s. Overwrite?"), *PackageName)), FText::FromString(__FUNCTION__)) == EAppReturnType::Cancel)
+		{
+			return false;
+		}
 	}
 
 	// Create a new package
@@ -170,27 +172,91 @@ bool WFC_Utility::SaveData(const FString& AssetPath, const TArray<FWFC_Block>& B
 
 }
 
-bool WFC_Utility::CreateBlocks(const FString& AssetName, UStaticMesh* Mesh, TArray<FWFC_Block>& OutBlocks)
+bool WFC_Utility::SaveData(const FString& AssetPath, const FWFC_Block& Block)
 {
-	if (AssetName.IsEmpty())
+	if (!AssetPath.StartsWith(TEXT("/Game/")))
 	{
-		UE_LOG(LogTemp, Error, TEXT("Asset name is empty."));
+		UE_LOG(LogTemp, Error, TEXT("Invalid asset path: %s. Path must start with '/Game/'."), *AssetPath);
 		return false;
 	}
 
-	// Split the asset name into an array of strings
-	TArray<FString> Tokens;
-	AssetName.ParseIntoArray(Tokens, TEXT("_"), true);
 
-	// Check if the asset name contains the correct number of socket strings
+	FString PackageName = FPackageName::ObjectPathToPackageName(AssetPath);
+	FString AssetName = FPackageName::GetLongPackageAssetName(PackageName);
+
+	// Ensure the folder exists
+	FString DirectoryPath = FPaths::ProjectContentDir() + FPackageName::GetLongPackagePath(PackageName).Mid(6); // Remove "/Game/"
+	if (!IFileManager::Get().DirectoryExists(*DirectoryPath))
+	{
+		if (!IFileManager::Get().MakeDirectory(*DirectoryPath, true))
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed to create directory: %s"), *DirectoryPath);
+			return false;
+		}
+	}
+
+	FString PackageFileName = FPackageName::LongPackageNameToFilename(PackageName, FPackageName::GetAssetPackageExtension());
+
+	//check if package already exists
+	if (FPackageName::DoesPackageExist(PackageName))
+	{
+		if (FMessageDialog::Open(EAppMsgType::OkCancel, FText::FromString(FString::Printf(TEXT("Package already exists: %s. Overwrite?"), *PackageName)), FText::FromString(__FUNCTION__)) == EAppReturnType::Cancel)
+		{
+			return false;
+		}
+
+		// delete the existing package
+		if (!IFileManager::Get().Delete(*PackageFileName))
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed to delete existing package: %s"), *PackageFileName);
+			return false;
+		}
+	}
+
+	// Create a new package
+	UPackage* Package = CreatePackage(*PackageName);
+	if (!Package)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to create package: %s"), *PackageName);
+		return false;
+	}
+
+	// Create the data asset instance
+	UWFC_BlockAsset* DataAsset = NewObject<UWFC_BlockAsset>(Package, UWFC_BlockAsset::StaticClass(), *AssetName, RF_Public | RF_Standalone);
+	if (!DataAsset)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to create data asset."));
+		return false;
+	}
+
+	DataAsset->Block = Block;
+
+	// Mark the package dirty and save it
+	FAssetRegistryModule::AssetCreated(DataAsset);
+	DataAsset->MarkPackageDirty();
+
+
+	if (!UPackage::SavePackage(Package, DataAsset, RF_Public | RF_Standalone, *PackageFileName))
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to save package: %s"), *PackageFileName);
+		return false;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("Data asset '%s' saved at '%s'"), *PackageName, *PackageFileName);
+	return true;
+}
+
+
+bool WFC_Utility::CreateSockets(TArray<FString> Tokens, TArray<FWFC_Socket>& OutSockets)
+{
 	if (Tokens.Num() < 6)
 	{
-		UE_LOG(LogTemp, Error, TEXT("Invalid number of socket strings in asset name: %s"), *AssetName);
+		UE_LOG(LogTemp, Error, TEXT("Invalid number of socket strings in asset name"));
 		return false;
 	}
 
-	TArray<FWFC_Socket> Sockets;
-	Sockets.Reserve(6);
+	OutSockets.Empty();
+	OutSockets.Reserve(6);
 
 	// Process each socket string
 	for (int i = 0; i < 6; i++)
@@ -236,13 +302,40 @@ bool WFC_Utility::CreateBlocks(const FString& AssetName, UStaticMesh* Mesh, TArr
 		}
 
 		Socket.Id = FCString::Atoi(*Tokens[i]);
-		Sockets.Add(Socket);
+		OutSockets.Add(Socket);
 	}
 
-	int Priority = 1; //TODO:: implement priority
+	return true;
+}
+
+bool WFC_Utility::CreateBlocks(const FString& AssetName, UStaticMesh* Mesh, TArray<FWFC_Block>& OutBlocks)
+{
+	if (AssetName.IsEmpty())
+	{
+		UE_LOG(LogTemp, Error, TEXT("Asset name is empty."));
+		return false;
+	}
+
+	// Split the asset name into an array of strings
+	TArray<FString> Tokens;
+	AssetName.ParseIntoArray(Tokens, TEXT("_"), true);
+
+	// Check if the asset name contains the correct number of socket strings
+	if (Tokens.Num() < 6)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Invalid number of socket strings in asset name: %s"), *AssetName);
+		return false;
+	}
+
+	TArray<FWFC_Socket> Sockets;
+	if(!CreateSockets(Tokens, Sockets))
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to create sockets for mesh: %s"), *AssetName);
+		return false;;
+	}
 
 	// Create the first block
-	FWFC_Block NewBlock = FWFC_Block(Mesh, Sockets, 0, Priority);
+	FWFC_Block NewBlock = FWFC_Block(Mesh, Sockets);
 	OutBlocks.Add(NewBlock);
 
 	// Add additional blocks if there are variants

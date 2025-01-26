@@ -39,6 +39,10 @@ public:
 	*/
 	static bool SaveData(const FString& AssetPath, const TArray<FWFC_Block>& Blocks);
 
+	static bool SaveData(const FString& AssetPath, const FWFC_Block& Block);
+
+	static bool CreateSockets(TArray<FString> Tokens, TArray<FWFC_Socket>& OutSockets);
+
 private:
 	static bool CreateBlocks(const FString& AssetName, UStaticMesh* Mesh, TArray<FWFC_Block>& OutBlocks);
 	static FWFC_Block RotateBlock(const FWFC_Block& Block, const int& Rotation);

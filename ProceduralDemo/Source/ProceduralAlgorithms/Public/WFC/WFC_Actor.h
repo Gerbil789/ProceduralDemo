@@ -23,6 +23,15 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "WFC")
 	void GenerateMesh();
 
+	UFUNCTION(BlueprintCallable, CallInEditor, Category = "WFC", meta = (ToolTip = "Execute WFC algorithm"))
+	bool RunWFC();
+
+	UFUNCTION(BlueprintCallable, CallInEditor, Category = "WFC", meta = (ToolTip = "Create mesh instances"))
+	bool Render();
+
+	UFUNCTION(BlueprintCallable, CallInEditor, Category = "WFC", meta = (ToolTip = "Delete all mesh instances & Clean Grid"))
+	void CleanUpMesh();
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "WFC")
 	UWFC_DataSet* Dataset = nullptr;
 
@@ -31,18 +40,14 @@ protected:
 
 	UPROPERTY(BlueprintReadWrite, Category = "WFC")
 	TMap<FIntVector, FWFC_Block> Grid;
-private:
-	UFUNCTION(CallInEditor, Category = "WFC")
-	void CleanUpMesh();
 
-	bool LoadDataset();
-
-	bool Render();
-
-	UPROPERTY(EditAnywhere, Category = "WFC")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "WFC")
 	int Offset = 200;
 
-	WaveFunctionCollapse WFC = WaveFunctionCollapse();
+	UFUNCTION(CallInEditor, Category = "WFC", meta = (DisplayName = "Reload"))
+	void LoadDataset();
 
+private:
+	WaveFunctionCollapse WFC = WaveFunctionCollapse();
 	TMap<UStaticMesh*, UInstancedStaticMeshComponent*> ISMComponents = TMap<UStaticMesh*, UInstancedStaticMeshComponent*>();
 };

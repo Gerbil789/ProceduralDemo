@@ -57,6 +57,31 @@ bool WaveFunctionCollapse::Initialize(TMap<FIntVector, FWFC_Block>& OutGrid, con
 	Entropies.SetNum(TotalCells);
 	OutGrid.Reserve(TotalCells);
 
+
+	if (!OutGrid.IsEmpty())
+	{
+		//update compatibility table
+		int newBlocks = 0;
+		for (auto& Pair : OutGrid)
+		{
+			FIntVector Position = Pair.Key;
+			FWFC_Block Block = Pair.Value;
+
+			if (!Blocks.Contains(Block))
+			{
+				Blocks.Add(Block);
+				newBlocks++;
+			}
+
+		}
+
+		if (newBlocks > 0)
+		{
+			BuildCompatibilityTable();
+		}
+	}
+
+
 	for (int i = 0; i < TotalCells; ++i)
 	{
 		Wave[i] = Blocks;
@@ -181,6 +206,10 @@ void WaveFunctionCollapse::Propagate(const FIntVector& Position, TMap<FIntVector
 				if (CompatibilityTable[Dir].Contains(CurrentBlock))
 				{
 					ValidNeighborsSet.Append(CompatibilityTable[Dir][CurrentBlock]);
+				}
+				else
+				{
+					UE_LOG(LogTemp, Error, TEXT("WaveFunctionCollapse: CompatibilityTable does not contain block"));
 				}
 			}
 
@@ -313,13 +342,12 @@ bool WaveFunctionCollapse::FindLowestEntropyCell(FIntVector& OutPosition) const
 	}
 
 	// If no cell has entropy > 1, we are done
-	if (LowestEntropyCells.Num() == 0)
+	if (LowestEntropyCells.IsEmpty())
 	{
-		UE_LOG(LogTemp, Display, TEXT("WaveFunctionCollapse: No cell found"));
 		return false;
 	}
 
-	// Sort cells by Z coordinate (ascending order)
+	// //Sort cells by Z coordinate (ascending order)
 	Algo::Sort(LowestEntropyCells, [](const FIntVector& A, const FIntVector& B)
 		{
 			return A.Z < B.Z; // Sort by Z coordinate
@@ -344,6 +372,8 @@ bool WaveFunctionCollapse::FindLowestEntropyCell(FIntVector& OutPosition) const
 	// Randomly select one of the cells with the lowest Z coordinate
 	int RandomIndex = FMath::RandRange(0, LowestZCells.Num() - 1);
 	OutPosition = LowestZCells[RandomIndex];
+
+	//OutPosition = LowestEntropyCells[FMath::RandRange(0, LowestEntropyCells.Num() - 1)];
 
 	return true;
 }

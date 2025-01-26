@@ -1,98 +1,101 @@
 #include "WFC/WFC_BlockPreviewActor.h"
-#include "WFC/WFC_Utility.h"
 
 AWFC_BlockPreviewActor::AWFC_BlockPreviewActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
+
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
 	SetRootComponent(RootComponent);
 
-  static ConstructorHelpers::FObjectFinder<UStaticMesh> WireframeMeshFinder(TEXT("/Game/Wireframe"));
-  if (WireframeMeshFinder.Succeeded())
-  {
-    WireframeMesh = WireframeMeshFinder.Object;
-  }
-  else
-  {
-		UE_LOG(LogTemp, Warning, TEXT("Failed to load wireframe mesh."));
-  }
+	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
+	MeshComponent->SetupAttachment(RootComponent);
+
+	WireframeComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WireframeComponent"));
+	WireframeComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	WireframeComponent->SetupAttachment(RootComponent);
+
+	NameComponent = CreateDefaultSubobject<UTextRenderComponent>(TEXT("NameComponent"));
+	NameComponent->SetupAttachment(RootComponent);
+	NameComponent->SetText(FText());
+	NameComponent->SetHorizontalAlignment(EHTA_Center);
+	NameComponent->SetVerticalAlignment(EVRTA_TextCenter);
+	NameComponent->SetWorldSize(60.0f);
+	NameComponent->SetTextRenderColor(FColor::Red);
+	NameComponent->SetWorldRotation(FRotator(0, 0, 0));
 
 
-}
+	const int TextOffset = 120;
+	const TArray<FVector> TextPositions = {
+		FVector(TextOffset, 0, 0),		// front
+		FVector(-TextOffset, 0, 0),		// back
+		FVector(0, TextOffset, 0),		// right
+		FVector(0, -TextOffset, 0),		// left
+		FVector(0, 0, TextOffset),		// up
+		FVector(0, 0, -TextOffset)		// down
+	};
 
-void AWFC_BlockPreviewActor::LoadMeshes()
-{
-	if (!WFC_Utility::LoadBlocksFromDirectory(MeshDirectoryPath, Blocks, bAddEmptyBlock, bAddFillBlock))
+	const TArray<FString> TextNames = {
+		TEXT("Front"),
+		TEXT("Back"),
+		TEXT("Right"),
+		TEXT("Left"),
+		TEXT("Up"),
+		TEXT("Down")
+	};
+
+	TextComponents.Reserve(6);
+	for (int32 i = 0; i < 6; i++)
 	{
-		UE_LOG(LogTemp, Error, TEXT("Failed to load blocks from directory: %s"), *MeshDirectoryPath);
-		return;
+		UTextRenderComponent* TextComponent = CreateDefaultSubobject<UTextRenderComponent>(*TextNames[i]);
+		TextComponent->SetupAttachment(RootComponent);
+		TextComponent->SetRelativeLocation(TextPositions[i]);
+		TextComponent->SetHorizontalAlignment(EHTA_Center);
+		TextComponent->SetVerticalAlignment(EVRTA_TextCenter);
+		TextComponent->SetWorldSize(50.0f);
+		TextComponent->SetText(FText::FromString(TextNames[i])); 
+		TextComponent->SetWorldRotation(FRotator(0, 0, 0));
+
+		TextComponents.Add(TextComponent);
 	}
 }
 
-void AWFC_BlockPreviewActor::Preview()
+
+void AWFC_BlockPreviewActor::Initialize(const FWFC_Block Block, UStaticMesh* WireframeMesh)
 {
-  if (Blocks.Num() == 0)
-  {
-    LoadMeshes();
-  }
-
-  Clear();
-
-  // Calculate grid dimensions
-  int32 Columns = FMath::CeilToInt(FMath::Sqrt((float)Blocks.Num()));
-  int32 Rows = FMath::CeilToInt(static_cast<float>(Blocks.Num()) / Columns);
-
-
-  FVector GridCenter = FVector(Rows - 1, Columns - 1, 0) * Offset / 2.0f;
-
-  for (int32 i = 0; i < Blocks.Num(); i++)
-  {
-    // Compute grid coordinates
-    int32 Row = i / Columns;
-    int32 Col = i % Columns;
-
-    FVector Location = FVector(Offset * Col, Offset * Row, 0) - GridCenter;
-
-    AWFC_BlockActor* NewActor = GetWorld()->SpawnActor<AWFC_BlockActor>(Location, FRotator::ZeroRotator);
-    if (!NewActor)
-    {
-      UE_LOG(LogTemp, Error, TEXT("Failed to spawn actor."));
-      continue;
-    }
-
-		NewActor->Initialize(Blocks[i], WireframeMesh);
-
-    FAttachmentTransformRules AttachmentRules(EAttachmentRule::KeepRelative, true);
-    NewActor->AttachToActor(this, AttachmentRules);
-    NewActor->SetOwner(this);
-  }
-}
-
-void AWFC_BlockPreviewActor::Clear()
-{
-	TArray<AActor*> AttachedActors;
-	GetAttachedActors(AttachedActors);
-
-	for (AActor* AttachedActor : AttachedActors)
+	if (!Block.IsEmpty())
 	{
-		if (AttachedActor)
+		if (!Block.StaticMesh || !MeshComponent)
 		{
-			AttachedActor->Destroy();
+			UE_LOG(LogTemp, Error, TEXT("StaticMesh or MeshComponent is not initialized properly."));
+			return;
 		}
-	}
-}
 
-void AWFC_BlockPreviewActor::Save()
-{
-	if (Blocks.Num() == 0)
+		MeshComponent->SetStaticMesh(Block.StaticMesh);
+
+		FRotator Rotation = FRotator(0, Block.Rotation, 0);
+		MeshComponent->SetWorldRotation(Rotation);
+	}
+	else
 	{
-		UE_LOG(LogTemp, Error, TEXT("No blocks to save."));
+		NameComponent->SetText(FText::FromString("Empty"));
+	}
+
+	if (TextComponents.Num() != 6)
+	{
+		UE_LOG(LogTemp, Error, TEXT("TextComponents array is not initialized properly."));
 		return;
 	}
 
-	if (WFC_Utility::SaveData(SaveAssetPath, Blocks) == false)
+	TextComponents[0]->SetText(FText::FromString(Block.SocketFront.ToString()));
+	TextComponents[1]->SetText(FText::FromString(Block.SocketBack.ToString()));
+	TextComponents[2]->SetText(FText::FromString(Block.SocketRight.ToString()));
+	TextComponents[3]->SetText(FText::FromString(Block.SocketLeft.ToString()));
+	TextComponents[4]->SetText(FText::FromString(Block.SocketUp.ToString()));
+	TextComponents[5]->SetText(FText::FromString(Block.SocketDown.ToString()));
+
+	// optional wireframe mesh
+	if(WireframeMesh)
 	{
-		UE_LOG(LogTemp, Error, TEXT("Failed to save blocks to: %s"), *SaveAssetPath);
+		WireframeComponent->SetStaticMesh(WireframeMesh);
 	}
-	UE_LOG(LogTemp, Warning, TEXT("Saved %d blocks to: %s"), Blocks.Num(), *SaveAssetPath);
 }

@@ -6,8 +6,8 @@
 #include "WFC_DataSet.generated.h"
 
 
-UCLASS()
-class PROCEDURALALGORITHMS_API UWFC_DataSet : public UObject
+UCLASS(BlueprintType, Blueprintable)
+class PROCEDURALALGORITHMS_API UWFC_DataSet : public UPrimaryDataAsset
 {
 	GENERATED_BODY()
 
