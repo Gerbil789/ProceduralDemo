@@ -1,0 +1,3 @@
+[submodule "PCGExampleProject"]
+	path = PCGExampleProject
+	url = https://github.com/Nebukam/PCGExExampleProject
