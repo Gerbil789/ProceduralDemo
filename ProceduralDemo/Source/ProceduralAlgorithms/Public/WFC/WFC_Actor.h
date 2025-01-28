@@ -38,9 +38,6 @@ protected:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "WFC")
 	UWFC_DataSet* Dataset = nullptr;
 
-	//UPROPERTY(BlueprintReadWrite, Category = "WFC")
-	//TMap<FIntVector, FWFC_Block> Grid;
-
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "WFC")
 	int Offset = 200;
 

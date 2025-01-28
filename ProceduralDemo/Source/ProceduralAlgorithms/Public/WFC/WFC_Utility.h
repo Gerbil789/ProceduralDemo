@@ -43,8 +43,9 @@ public:
 
 	static bool CreateSockets(TArray<FString> Tokens, TArray<FWFC_Socket>& OutSockets);
 
-private:
 	static bool CreateBlocks(const FString& AssetName, UStaticMesh* Mesh, TArray<FWFC_Block>& OutBlocks);
+private:
+	
 	static FWFC_Block RotateBlock(const FWFC_Block& Block, const int& Rotation);
 };
 
