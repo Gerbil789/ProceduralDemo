@@ -10,6 +10,6 @@ public class ProceduralDemoEditorTarget : TargetRules
 		Type = TargetType.Editor;
 		DefaultBuildSettings = BuildSettingsVersion.V5;
 
-		ExtraModuleNames.AddRange( new string[] { "ProceduralDemo" } );
+		ExtraModuleNames.AddRange( new string[] { "ProceduralAlgorithmsEditor", "ProceduralAlgorithms", "ProceduralDemo" } );
 	}
 }

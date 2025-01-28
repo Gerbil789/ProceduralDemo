@@ -20,6 +20,11 @@
 				"Engine",
 				"CoreUObject"
 			]
+		},
+		{
+			"Name": "ProceduralAlgorithmsEditor",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
 		}
 	],
 	"Plugins": [
