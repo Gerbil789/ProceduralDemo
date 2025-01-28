@@ -95,11 +95,11 @@ void AWFC_WorldManager::ProcessNextChunk()
       }
 
       FIntVector ExpandedGridSize = FIntVector(GridSize.X + 2, GridSize.Y + 2, GridSize.Z);
-      if (!WFC.Run(ExpandedGrid, ExpandedGridSize))
-      {
-        UE_LOG(LogTemp, Error, TEXT("Failed to generate grid for chunk: %s"), *ChunkCoordinates.ToString());
-        return;
-      }
+      //if (!AWaveFunctionCollapse::Run(ExpandedGrid, ExpandedGridSize))
+      //{
+      //  UE_LOG(LogTemp, Error, TEXT("Failed to generate grid for chunk: %s"), *ChunkCoordinates.ToString());
+      //  return;
+      //}
 
       if (ExpandedGrid.Num() != (ExpandedGridSize.X * ExpandedGridSize.Y * ExpandedGridSize.Z))
       {
@@ -208,7 +208,7 @@ bool AWFC_WorldManager::LoadDataset()
     UE_LOG(LogTemp, Display, TEXT("Created and registered InstancedStaticMeshComponent for mesh: %s"), *Block.ToString());
   }
 
-	WFC.SetBlocks(Dataset->Blocks);
+  AWaveFunctionCollapse::SetBlocks(Dataset->Blocks);
 
   return true;
 }

@@ -23,7 +23,11 @@ public:
 		SocketUp(Sockets[4]),
 		SocketDown(Sockets[5])
 	{
+		//DisplayName = this->ToString();
 	}
+
+	//UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "WFC")
+	//FString DisplayName;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Block")
 	UStaticMesh* StaticMesh = nullptr;
@@ -84,7 +88,6 @@ inline uint32 GetTypeHash(const FWFC_Block& Block)
 	Hash = HashCombine(Hash, GetTypeHash(Block.Rotation));
 	return Hash;
 }
-
 
 
 // The UObject class that will hold a FWFC_Block instance

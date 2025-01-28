@@ -1,14 +1,19 @@
-#include "WFC/WFC.h"
+#include "WFC/WaveFunctionCollapse.h"
 
-void WaveFunctionCollapse::SetBlocks(const TArray<FWFC_Block>& _Blocks)
+AWaveFunctionCollapse::AWaveFunctionCollapse()
+{
+
+}
+
+void AWaveFunctionCollapse::SetBlocks(const TArray<FWFC_Block>& _Blocks)
 {
 	this->Blocks = _Blocks;
 	BuildCompatibilityTable();
 }
 
-bool WaveFunctionCollapse::Run(TMap<FIntVector, FWFC_Block>& OutGrid, const FIntVector& Size)
+bool AWaveFunctionCollapse::Run()
 {
-	if(!Initialize(OutGrid, Size))
+	if(!Initialize())
 	{
 		UE_LOG(LogTemp, Error, TEXT("WaveFunctionCollapse: Failed to initialize"));
 		return false;
@@ -18,31 +23,32 @@ bool WaveFunctionCollapse::Run(TMap<FIntVector, FWFC_Block>& OutGrid, const FInt
 	{
 		// Find the lowest-entropy cell
 		FIntVector LowestEntropyCell;
+
+		//if(!PreCollapsedBlocks.IsEmpty())
+		//{
+		//	LowestEntropyCell = PreCollapsedBlocks[0];
+		//	PreCollapsedBlocks.RemoveAt(0);
+		//}
+		//else 
 		if (!FindLowestEntropyCell(LowestEntropyCell))
 		{
 			break; // We have collapsed all cells
 		}
 
 		// Collapse the lowest-entropy cell
-		if (!CollapseCell(LowestEntropyCell, OutGrid))
+		if (!CollapseCell(LowestEntropyCell))
 		{
 			break;
 		}
 
 		// Propagate the changes
-		Propagate(LowestEntropyCell, OutGrid);
-	}
-
-	if (!ErrorMsg.IsEmpty())
-	{
-		UE_LOG(LogTemp, Error, TEXT("WaveFunctionCollapse: %s"), *ErrorMsg);
-		return false;
+		Propagate(LowestEntropyCell);
 	}
 
 	return true;
 }
 
-bool WaveFunctionCollapse::Initialize(TMap<FIntVector, FWFC_Block>& OutGrid, const FIntVector& Size)
+bool AWaveFunctionCollapse::Initialize()
 {
 	if(Blocks.IsEmpty())
 	{
@@ -50,19 +56,17 @@ bool WaveFunctionCollapse::Initialize(TMap<FIntVector, FWFC_Block>& OutGrid, con
 		return false;
 	}
 
-	ErrorMsg = FString();
-	this->GridSize = Size;
 	int TotalCells = GridSize.X * GridSize.Y * GridSize.Z;
 	Wave.SetNum(TotalCells);
 	Entropies.SetNum(TotalCells);
-	OutGrid.Reserve(TotalCells);
+	Grid.Reserve(TotalCells);
 
 
-	if (!OutGrid.IsEmpty())
+	if (!Grid.IsEmpty())
 	{
 		//update compatibility table
 		int newBlocks = 0;
-		for (auto& Pair : OutGrid)
+		for (auto& Pair : Grid)
 		{
 			FIntVector Position = Pair.Key;
 			FWFC_Block Block = Pair.Value;
@@ -89,35 +93,41 @@ bool WaveFunctionCollapse::Initialize(TMap<FIntVector, FWFC_Block>& OutGrid, con
 	}
 
 	//handle already collapsed cells
-	TMap<FIntVector, FWFC_Block> ToPropagate;
-	for (const auto& Pair : OutGrid)
+	//TMap<FIntVector, FWFC_Block> ToPropagate;
+	//PreCollapsedBlocks.Empty();
+	//PreCollapsedBlocks.Reserve(OutGrid.Num());
+	for (const auto& Pair : Grid)
 	{
 		FIntVector Position = Pair.Key;
 		FWFC_Block Block = Pair.Value;
 		int Index = GetIndex(Position);
 		Wave[Index] = { Block };
 		Entropies[Index] = 1;
-		ToPropagate.Add(Position, Block);
+		//ToPropagate.Add(Position, Block);
+		//PreCollapsedBlocks.Add(Position);
 	}
 
 	//propagate collapsed cells
-	for (const auto& Pair : ToPropagate)
-	{
-		FIntVector Position = Pair.Key;
-		Propagate(Position, OutGrid);
-	}
+	//for (const auto& Pair : ToPropagate)
+	//{
+	//	FIntVector Position = Pair.Key;
+	//	Propagate(Position, OutGrid);
+	//}
+
+	//FIntVector RandomPosition = PreCollapsedBlocks[FMath::RandRange(0, PreCollapsedBlocks.Num() - 1)];
+	//Propagate(RandomPosition, OutGrid);
 
 	return true;
 }
 
-bool WaveFunctionCollapse::CollapseCell(const FIntVector& Position, TMap<FIntVector, FWFC_Block>& OutGrid)
+bool AWaveFunctionCollapse::CollapseCell(const FIntVector& Position)
 {
 	int Index = GetIndex(Position);
 	TArray<FWFC_Block>& CellBlocks = Wave[Index];
 
 	if (CellBlocks.IsEmpty())
 	{
-		ErrorMsg = FString::Printf(TEXT("No blocks to collapse to at cell (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		UE_LOG(LogTemp, Error, TEXT("No blocks to collapse to at cell (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 		return false;
 	}
 
@@ -133,7 +143,7 @@ bool WaveFunctionCollapse::CollapseCell(const FIntVector& Position, TMap<FIntVec
 
 	if (TotalWeight <= 0.0f)
 	{
-		ErrorMsg = FString::Printf(TEXT("All blocks have zero or negative priority at cell (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		UE_LOG(LogTemp, Error, TEXT("All blocks have zero or negative priority at cell (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 		return false;
 	}
 
@@ -155,7 +165,7 @@ bool WaveFunctionCollapse::CollapseCell(const FIntVector& Position, TMap<FIntVec
 	FWFC_Block ChosenBlock = CellBlocks[ChosenIndex];
 
 	// Update the grid and wave
-	OutGrid.Add(Position, ChosenBlock);
+	Grid.Add(Position, ChosenBlock);
 	CellBlocks = { ChosenBlock }; // Reduce the possibilities to just the chosen block
 	Entropies[Index] = 1;
 
@@ -163,7 +173,7 @@ bool WaveFunctionCollapse::CollapseCell(const FIntVector& Position, TMap<FIntVec
 	return true;
 }
 
-void WaveFunctionCollapse::Propagate(const FIntVector& Position, TMap<FIntVector, FWFC_Block>& OutGrid)
+void AWaveFunctionCollapse::Propagate(const FIntVector& Position)
 {
 	const TArray<FIntVector> Directions =
 	{
@@ -224,14 +234,22 @@ void WaveFunctionCollapse::Propagate(const FIntVector& Position, TMap<FIntVector
 				}
 			}
 
+
 			if (ValidBlocks.Num() < NeighborBlocks.Num())
 			{
+				//if (ValidBlocks.IsEmpty())
+				//{
+				//	ErrorMsg = FString::Printf(TEXT("No valid blocks to propagate to at cell (%d, %d, %d)"), NeighborPosition.X, NeighborPosition.Y, NeighborPosition.Z);
+				//	return;
+				//}
+
+
 				Wave[NeighborIndex] = ValidBlocks;
 				Entropies[NeighborIndex] = ValidBlocks.Num();
 
 				if (ValidBlocks.Num() == 1)
 				{
-					OutGrid.Add(NeighborPosition, ValidBlocks[0]);
+					Grid.Add(NeighborPosition, ValidBlocks[0]);
 				}
 
 				PropagationStack.Add(NeighborPosition);
@@ -240,12 +258,12 @@ void WaveFunctionCollapse::Propagate(const FIntVector& Position, TMap<FIntVector
 	}
 }
 
-int WaveFunctionCollapse::GetIndex(const FIntVector& Position) const
+int AWaveFunctionCollapse::GetIndex(const FIntVector& Position) const
 {
 	return Position.X + Position.Y * GridSize.X + Position.Z * GridSize.X * GridSize.Y;
 }
 
-void WaveFunctionCollapse::BuildCompatibilityTable()
+void AWaveFunctionCollapse::BuildCompatibilityTable()
 {
 	CompatibilityTable.Empty();
 	CompatibilityTable.Reserve(6);
@@ -284,7 +302,7 @@ void WaveFunctionCollapse::BuildCompatibilityTable()
 
 }
 
-bool WaveFunctionCollapse::CheckCompatibility(const FWFC_Block& CollapsedBlock, const FWFC_Block& NeighborBlock, const FIntVector& Direction)
+bool AWaveFunctionCollapse::CheckCompatibility(const FWFC_Block& CollapsedBlock, const FWFC_Block& NeighborBlock, const FIntVector& Direction)
 {
 	if (Direction == FIntVector(1, 0, 0))
 	{
@@ -315,7 +333,7 @@ bool WaveFunctionCollapse::CheckCompatibility(const FWFC_Block& CollapsedBlock, 
 	return false;
 }
 
-bool WaveFunctionCollapse::FindLowestEntropyCell(FIntVector& OutPosition) const
+bool AWaveFunctionCollapse::FindLowestEntropyCell(FIntVector& OutPosition)
 {
 	int MinEntropy = TNumericLimits<int>::Max();
 	TArray<FIntVector> LowestEntropyCells; // Store all cells with the minimum entropy

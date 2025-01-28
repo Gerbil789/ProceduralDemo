@@ -5,11 +5,11 @@
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "WFC/WFC_Block.h"
 #include "WFC/WFC_DataSet.h"
-#include "WFC/WFC.h"
+#include "WFC/WaveFunctionCollapse.h"
 #include "WFC_WorldManager.generated.h"
 
 UCLASS()
-class PROCEDURALALGORITHMS_API AWFC_WorldManager : public AActor
+class PROCEDURALALGORITHMS_API AWFC_WorldManager : public AWaveFunctionCollapse
 {
 	GENERATED_BODY()
 	
@@ -30,9 +30,6 @@ private:
   UWFC_DataSet* Dataset = nullptr;
 
   UPROPERTY(EditAnywhere, Category = "WFC")
-  FIntVector GridSize = FIntVector(10, 10, 1);
-
-  UPROPERTY(EditAnywhere, Category = "WFC")
   int Offset = 200;
 
   UPROPERTY(EditAnywhere, Category = "WFC")
@@ -41,10 +38,12 @@ private:
   UPROPERTY(EditAnywhere, Category = "WFC")
   int32 UnloadDistance = 4;
 
-  WaveFunctionCollapse WFC = WaveFunctionCollapse();
+  //UWaveFunctionCollapse WFC = UWaveFunctionCollapse();
+  //UPROPERTY(BlueprintReadWrite, Category = "WFC")
+  //UWaveFunctionCollapse* WFC;
 
   TSet<FIntVector> LoadedChunks; // Set of currently loaded chunks
-  TMap<FIntVector, FWFC_Block> Grid; 
+  //TMap<FIntVector, FWFC_Block> Grid; 
   TMap<UStaticMesh*, UHierarchicalInstancedStaticMeshComponent*> HISMComponents;
   TQueue<FIntVector> ChunkGenerationQueue; // Queue for chunk generation
   bool bIsGeneratingChunk = false; // Flag to track if a chunk is being generated

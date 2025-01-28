@@ -9,7 +9,6 @@ AWFC_Actor::AWFC_Actor()
 	SetRootComponent(RootComponent);
 }
 
-// Reload dataset when changed
 void AWFC_Actor::PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent)
 {
 #if WITH_EDITOR
@@ -40,7 +39,7 @@ void AWFC_Actor::LoadDataset()
 		return;
 	}
 
-	WFC.SetBlocks(Dataset->Blocks);
+	AWaveFunctionCollapse::SetBlocks(Dataset->Blocks);
 
 	// Clear the InstancedStaticMeshComponents
 	for (auto& Pair : ISMComponents)
@@ -139,12 +138,12 @@ bool AWFC_Actor::RunWFC()
 		}
 	}
 
-	if (!WFC.IsInitialized())
+	if (Blocks.IsEmpty())
 	{
 		LoadDataset();
 	}
 
-	if (!WFC.Run(Grid, GridSize))
+	if (!AWaveFunctionCollapse::Run())
 	{
 		UE_LOG(LogTemp, Error, TEXT("Failed to generate grid."));
 		return false;
@@ -182,8 +181,7 @@ bool AWFC_Actor::Render()
 		UInstancedStaticMeshComponent* ISMComp = *ISMCompPtr;
 		FVector Location = (FVector)Position * Offset - GridCenter;
 		FRotator Rotation = FRotator(0, Block.Rotation, 0);
-		FTransform InstanceTransform(Rotation, Location);
-		ISMComp->AddInstance(InstanceTransform);
+		ISMComp->AddInstance(FTransform(Rotation, Location));
 	}
 
 	return true;

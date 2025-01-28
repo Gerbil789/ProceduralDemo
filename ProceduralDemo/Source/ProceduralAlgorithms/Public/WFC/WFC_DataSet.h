@@ -5,7 +5,6 @@
 #include "WFC/WFC_Block.h"
 #include "WFC_DataSet.generated.h"
 
-
 UCLASS(BlueprintType, Blueprintable)
 class PROCEDURALALGORITHMS_API UWFC_DataSet : public UPrimaryDataAsset
 {
@@ -14,5 +13,4 @@ class PROCEDURALALGORITHMS_API UWFC_DataSet : public UPrimaryDataAsset
 public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "WFC")
 	TArray<FWFC_Block> Blocks;
-	
 };
