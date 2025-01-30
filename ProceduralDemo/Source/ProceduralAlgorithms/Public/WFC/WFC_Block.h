@@ -39,22 +39,22 @@ public:
 	int Priority = 1;
 
 	// Sockets
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block")
+	UPROPERTY(BlueprintReadWrite, Category = "Block")
 	FWFC_Socket SocketFront;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block")
+	UPROPERTY(BlueprintReadWrite, Category = "Block")
 	FWFC_Socket SocketBack;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block")
+	UPROPERTY(BlueprintReadWrite, Category = "Block")
 	FWFC_Socket SocketRight;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block")
+	UPROPERTY(BlueprintReadWrite, Category = "Block")
 	FWFC_Socket SocketLeft;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block")
+	UPROPERTY(BlueprintReadWrite, Category = "Block")
 	FWFC_Socket SocketUp;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block")
+	UPROPERTY(BlueprintReadWrite, Category = "Block")
 	FWFC_Socket SocketDown;
 
 	bool IsEmpty() const { return StaticMesh == nullptr; }

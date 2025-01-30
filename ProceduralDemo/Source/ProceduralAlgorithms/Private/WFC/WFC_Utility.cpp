@@ -113,7 +113,6 @@ bool WFC_Utility::SaveData(const FString& AssetPath, const TArray<FWFC_Block>& B
 		return false;
 	}
 
-
 	FString PackageName = FPackageName::ObjectPathToPackageName(AssetPath);
 	FString AssetName = FPackageName::GetLongPackageAssetName(PackageName);
 

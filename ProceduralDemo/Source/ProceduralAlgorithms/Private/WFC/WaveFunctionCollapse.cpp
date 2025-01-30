@@ -21,27 +21,17 @@ bool AWaveFunctionCollapse::Run()
 
 	while (true)
 	{
-		// Find the lowest-entropy cell
 		FIntVector LowestEntropyCell;
-
-		//if(!PreCollapsedBlocks.IsEmpty())
-		//{
-		//	LowestEntropyCell = PreCollapsedBlocks[0];
-		//	PreCollapsedBlocks.RemoveAt(0);
-		//}
-		//else 
 		if (!FindLowestEntropyCell(LowestEntropyCell))
 		{
 			break; // We have collapsed all cells
 		}
 
-		// Collapse the lowest-entropy cell
 		if (!CollapseCell(LowestEntropyCell))
 		{
-			break;
+			break; // No valid blocks to collapse to
 		}
 
-		// Propagate the changes
 		Propagate(LowestEntropyCell);
 	}
 
@@ -89,33 +79,19 @@ bool AWaveFunctionCollapse::Initialize()
 	for (int i = 0; i < TotalCells; ++i)
 	{
 		Wave[i] = Blocks;
-		Entropies[i] = Blocks.Num();
+		FIntVector Position = FIntVector(i % GridSize.X, (i / GridSize.X) % GridSize.Y, i / (GridSize.X * GridSize.Y));
+		Entropies[i] = CalculateEntropy(Position);
 	}
 
 	//handle already collapsed cells
-	//TMap<FIntVector, FWFC_Block> ToPropagate;
-	//PreCollapsedBlocks.Empty();
-	//PreCollapsedBlocks.Reserve(OutGrid.Num());
 	for (const auto& Pair : Grid)
 	{
 		FIntVector Position = Pair.Key;
 		FWFC_Block Block = Pair.Value;
 		int Index = GetIndex(Position);
 		Wave[Index] = { Block };
-		Entropies[Index] = 1;
-		//ToPropagate.Add(Position, Block);
-		//PreCollapsedBlocks.Add(Position);
+		Entropies[Index] = 0;
 	}
-
-	//propagate collapsed cells
-	//for (const auto& Pair : ToPropagate)
-	//{
-	//	FIntVector Position = Pair.Key;
-	//	Propagate(Position, OutGrid);
-	//}
-
-	//FIntVector RandomPosition = PreCollapsedBlocks[FMath::RandRange(0, PreCollapsedBlocks.Num() - 1)];
-	//Propagate(RandomPosition, OutGrid);
 
 	return true;
 }
@@ -167,9 +143,30 @@ bool AWaveFunctionCollapse::CollapseCell(const FIntVector& Position)
 	// Update the grid and wave
 	Grid.Add(Position, ChosenBlock);
 	CellBlocks = { ChosenBlock }; // Reduce the possibilities to just the chosen block
-	Entropies[Index] = 1;
+	Entropies[Index] = 0;
 
 
+	return true;
+}
+
+bool AWaveFunctionCollapse::CollapseCellWithBlock(const FIntVector& Position, const FWFC_Block& Block)
+{
+	int Index = GetIndex(Position);
+	if (Wave[Index].IsEmpty())
+	{
+		UE_LOG(LogTemp, Error, TEXT("No blocks to collapse to at cell (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		return false;
+	}
+
+	if (!Wave[Index].Contains(Block))
+	{
+		UE_LOG(LogTemp, Error, TEXT("Block is not compatible with cell (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		return false;
+	}
+
+	Wave[Index] = { Block };
+	Entropies[Index] = 0;	
+	Grid.Add(Position, Block);
 	return true;
 }
 
@@ -245,7 +242,7 @@ void AWaveFunctionCollapse::Propagate(const FIntVector& Position)
 
 
 				Wave[NeighborIndex] = ValidBlocks;
-				Entropies[NeighborIndex] = ValidBlocks.Num();
+				Entropies[NeighborIndex] = CalculateEntropy(NeighborPosition);
 
 				if (ValidBlocks.Num() == 1)
 				{
@@ -261,6 +258,25 @@ void AWaveFunctionCollapse::Propagate(const FIntVector& Position)
 int AWaveFunctionCollapse::GetIndex(const FIntVector& Position) const
 {
 	return Position.X + Position.Y * GridSize.X + Position.Z * GridSize.X * GridSize.Y;
+}
+
+int AWaveFunctionCollapse::CalculateEntropy(const FIntVector& Position) const
+{
+	int Index = GetIndex(Position);
+	const TArray<FWFC_Block>& SlotModules = Wave[Index];
+
+	if (SlotModules.IsEmpty())
+	{
+		UE_LOG(LogTemp, Error, TEXT("WaveFunctionCollapse: CalculateEntropy: SlotModules is empty"));
+		return 0;
+	}
+
+	int Entropy = 0;
+	for (const FWFC_Block& Block : SlotModules)
+	{
+		Entropy += Block.Priority;
+	}
+	return Entropy;
 }
 
 void AWaveFunctionCollapse::BuildCompatibilityTable()
@@ -336,60 +352,91 @@ bool AWaveFunctionCollapse::CheckCompatibility(const FWFC_Block& CollapsedBlock,
 bool AWaveFunctionCollapse::FindLowestEntropyCell(FIntVector& OutPosition)
 {
 	int MinEntropy = TNumericLimits<int>::Max();
-	TArray<FIntVector> LowestEntropyCells; // Store all cells with the minimum entropy
+	TArray<FIntVector> LowestEntropySlots; // Store all cells with the minimum entropy
 
 	// Find the minimum entropy and collect all cells with that entropy
 	for (int i = 0; i < Entropies.Num(); ++i)
 	{
 		// Entropy == 1 means the cell is already collapsed
-		if (Entropies[i] > 1)
+		if (Entropies[i] > 0)
 		{
 			if (Entropies[i] < MinEntropy)
 			{
 				// Found a new minimum entropy
 				MinEntropy = Entropies[i];
-				LowestEntropyCells.Reset(); // Clear the previous list
-				LowestEntropyCells.Add(FIntVector(i % GridSize.X, (i / GridSize.X) % GridSize.Y, i / (GridSize.X * GridSize.Y)));
+				LowestEntropySlots.Reset(); // Clear the previous list
+				LowestEntropySlots.Add(FIntVector(i % GridSize.X, (i / GridSize.X) % GridSize.Y, i / (GridSize.X * GridSize.Y)));
 			}
 			else if (Entropies[i] == MinEntropy)
 			{
 				// Found another cell with the same minimum entropy
-				LowestEntropyCells.Add(FIntVector(i % GridSize.X, (i / GridSize.X) % GridSize.Y, i / (GridSize.X * GridSize.Y)));
+				LowestEntropySlots.Add(FIntVector(i % GridSize.X, (i / GridSize.X) % GridSize.Y, i / (GridSize.X * GridSize.Y)));
 			}
 		}
 	}
 
 	// If no cell has entropy > 1, we are done
-	if (LowestEntropyCells.IsEmpty())
+	if (LowestEntropySlots.IsEmpty())
 	{
 		return false;
 	}
 
-	// //Sort cells by Z coordinate (ascending order)
-	Algo::Sort(LowestEntropyCells, [](const FIntVector& A, const FIntVector& B)
-		{
-			return A.Z < B.Z; // Sort by Z coordinate
-		});
-
-	// Find all cells with the lowest Z coordinate
-	int LowestZ = LowestEntropyCells[0].Z; // The lowest Z coordinate after sorting
-	TArray<FIntVector> LowestZCells;
-
-	for (const FIntVector& Cell : LowestEntropyCells)
+	if (LowestEntropySlots.Num() == 1)
 	{
-		if (Cell.Z == LowestZ)
+		OutPosition = LowestEntropySlots[0];
+		return true;
+	}
+
+
+	// Select module from the lowest entropy slots where the module has the least amount of possibilities
+	int MinPossibilities = TNumericLimits<int>::Max();
+	FIntVector MinPossibilitiesPosition = FIntVector(-1, -1, -1);
+
+	for (const FIntVector& Position : LowestEntropySlots)
+	{
+		int Index = GetIndex(Position);
+		int NumPossibilities = Wave[Index].Num();
+		if (NumPossibilities < MinPossibilities)
 		{
-			LowestZCells.Add(Cell);
-		}
-		else
-		{
-			break; // All remaining cells have higher Z coordinates
+			MinPossibilities = NumPossibilities;
+			MinPossibilitiesPosition = Position;
 		}
 	}
 
-	// Randomly select one of the cells with the lowest Z coordinate
-	int RandomIndex = FMath::RandRange(0, LowestZCells.Num() - 1);
-	OutPosition = LowestZCells[RandomIndex];
+	if (MinPossibilitiesPosition == FIntVector(-1, -1, -1))
+	{
+		UE_LOG(LogTemp, Error, TEXT("WaveFunctionCollapse: FindLowestEntropyCell: MinPossibilitiesPosition is invalid"));
+		return false;
+	}
+
+	OutPosition = MinPossibilitiesPosition;
+
+
+	// //Sort cells by Z coordinate (ascending order)
+	//Algo::Sort(LowestEntropySlots, [](const FIntVector& A, const FIntVector& B)
+	//	{
+	//		return A.Z < B.Z; // Sort by Z coordinate
+	//	});
+
+	//// Find all cells with the lowest Z coordinate
+	//int LowestZ = LowestEntropySlots[0].Z; // The lowest Z coordinate after sorting
+	//TArray<FIntVector> LowestZCells;
+
+	//for (const FIntVector& Cell : LowestEntropySlots)
+	//{
+	//	if (Cell.Z == LowestZ)
+	//	{
+	//		LowestZCells.Add(Cell);
+	//	}
+	//	else
+	//	{
+	//		break; // All remaining cells have higher Z coordinates
+	//	}
+	//}
+
+	//// Randomly select one of the cells with the lowest Z coordinate
+	//int RandomIndex = FMath::RandRange(0, LowestZCells.Num() - 1);
+	//OutPosition = LowestZCells[RandomIndex];
 
 	//OutPosition = LowestEntropyCells[FMath::RandRange(0, LowestEntropyCells.Num() - 1)];
 

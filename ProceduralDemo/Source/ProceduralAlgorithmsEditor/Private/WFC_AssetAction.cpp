@@ -63,3 +63,44 @@ bool UWFC_AssetAction::SaveDataSet(const FString& AssetPath, const TArray<FWFC_B
 	UE_LOG(LogTemp, Log, TEXT("Saved blocks to: %s"), *AssetPath);
 	return true;
 }
+
+bool UWFC_AssetAction::ProcessStaticMesh(UStaticMesh* StaticMesh, FWFC_Block& OutBlock)
+{
+	if (!StaticMesh)
+	{
+		UE_LOG(LogTemp, Error, TEXT("StaticMesh is not set."));
+		return false;
+	}
+
+	FString AssetName = StaticMesh->GetName();
+
+	TArray<FString> Tokens;
+	AssetName.ParseIntoArray(Tokens, TEXT("_"), true);
+
+	if (Tokens.Num() < 6)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Invalid number of socket strings in asset name: %s"), *AssetName);
+		return false;
+	}
+
+	TArray<FWFC_Socket> Sockets;
+	if (!WFC_Utility::CreateSockets(Tokens, Sockets))
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to create sockets for mesh: %s"), *AssetName);
+		return false;
+	}
+
+	OutBlock = FWFC_Block(StaticMesh, Sockets);
+	return true;
+}
+
+bool UWFC_AssetAction::SaveBlock(const FString& AssetPath, const FWFC_Block& Block)
+{
+	if (!WFC_Utility::SaveData(AssetPath, Block))
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to save block to: %s"), *AssetPath);
+		return false;
+	}
+	UE_LOG(LogTemp, Log, TEXT("Saved block to: %s"), *AssetPath);
+	return true;
+}

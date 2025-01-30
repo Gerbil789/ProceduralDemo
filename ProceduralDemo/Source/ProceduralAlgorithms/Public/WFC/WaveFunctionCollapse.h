@@ -28,12 +28,16 @@ public:
 	bool CollapseCell(const FIntVector& Position);
 
 	UFUNCTION(BlueprintCallable, Category = "WFC")
+	bool CollapseCellWithBlock(const FIntVector& Position, const FWFC_Block& Block);
+
+	UFUNCTION(BlueprintCallable, Category = "WFC")
 	void Propagate(const FIntVector& Position);
 
 private:
 	bool CheckCompatibility(const FWFC_Block& CollapsedBlock, const FWFC_Block& NeighborBlock, const FIntVector& Direction);
 	void BuildCompatibilityTable();
 	int GetIndex(const FIntVector& Position) const;
+	int CalculateEntropy(const FIntVector& Position) const;
 
 protected:
 	UPROPERTY(BlueprintReadWrite, Category = "WFC")
