@@ -59,7 +59,6 @@ void AWFC_Actor::LoadDataset()
 			UE_LOG(LogTemp, Error, TEXT("Block does not have a valid StaticMesh."));
 			return;
 		}
-
 		if (ISMComponents.Contains(Block.StaticMesh))
 		{
 			continue;	// No need for duplicate ISM components

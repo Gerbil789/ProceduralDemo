@@ -4,7 +4,7 @@
 #include "WFC_Block.h"
 #include "WaveFunctionCollapse.generated.h" 
 
-UCLASS(Blueprintable)
+UCLASS(Blueprintable, Abstract)
 class PROCEDURALALGORITHMS_API AWaveFunctionCollapse : public AActor
 {
 	GENERATED_BODY()
@@ -13,7 +13,7 @@ public:
 	AWaveFunctionCollapse();
 
 	UFUNCTION(BlueprintCallable, Category = "WFC")
-	void SetBlocks(const TArray<FWFC_Block>& Blocks);
+	void SetBlocks(const TArray<FWFC_Block>& _Blocks);
 
 	UFUNCTION(BlueprintCallable, Category = "WFC")
 	bool Run();
@@ -37,7 +37,7 @@ private:
 	bool CheckCompatibility(const FWFC_Block& CollapsedBlock, const FWFC_Block& NeighborBlock, const FIntVector& Direction);
 	void BuildCompatibilityTable();
 	int GetIndex(const FIntVector& Position) const;
-	int CalculateEntropy(const FIntVector& Position) const;
+	float CalculateEntropy(int Index) const;
 
 protected:
 	UPROPERTY(BlueprintReadWrite, Category = "WFC")
@@ -51,6 +51,6 @@ protected:
 
 private:
 	TArray<TArray<FWFC_Block>> Wave; // 3D grid of block possibilities
-	TArray<int> Entropies;          // Stores the entropy of each cell
+	TArray<float> Entropies;          // Stores the entropy of each cell
 	TMap<FIntVector, TMap<FWFC_Block, TArray<FWFC_Block>>> CompatibilityTable;
 };

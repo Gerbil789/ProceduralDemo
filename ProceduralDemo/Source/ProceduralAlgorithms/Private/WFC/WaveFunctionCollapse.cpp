@@ -51,46 +51,10 @@ bool AWaveFunctionCollapse::Initialize()
 	Entropies.SetNum(TotalCells);
 	Grid.Reserve(TotalCells);
 
-
-	if (!Grid.IsEmpty())
-	{
-		//update compatibility table
-		int newBlocks = 0;
-		for (auto& Pair : Grid)
-		{
-			FIntVector Position = Pair.Key;
-			FWFC_Block Block = Pair.Value;
-
-			if (!Blocks.Contains(Block))
-			{
-				Blocks.Add(Block);
-				newBlocks++;
-			}
-
-		}
-
-		if (newBlocks > 0)
-		{
-			BuildCompatibilityTable();
-		}
-	}
-
-
 	for (int i = 0; i < TotalCells; ++i)
 	{
 		Wave[i] = Blocks;
-		FIntVector Position = FIntVector(i % GridSize.X, (i / GridSize.X) % GridSize.Y, i / (GridSize.X * GridSize.Y));
-		Entropies[i] = CalculateEntropy(Position);
-	}
-
-	//handle already collapsed cells
-	for (const auto& Pair : Grid)
-	{
-		FIntVector Position = Pair.Key;
-		FWFC_Block Block = Pair.Value;
-		int Index = GetIndex(Position);
-		Wave[Index] = { Block };
-		Entropies[Index] = 0;
+		Entropies[i] = CalculateEntropy(i);
 	}
 
 	return true;
@@ -107,30 +71,15 @@ bool AWaveFunctionCollapse::CollapseCell(const FIntVector& Position)
 		return false;
 	}
 
-	// Calculate the total weight (sum of priorities)
-	float TotalWeight = 0.0f;
-	TArray<float> CumulativeWeights; // Stores cumulative weights for weighted random selection
-
-	for (const FWFC_Block& Block : CellBlocks)
-	{
-		TotalWeight += FMath::Max(0, Block.Priority); // Ensure no negative weights
-		CumulativeWeights.Add(TotalWeight);
-	}
-
-	if (TotalWeight <= 0.0f)
-	{
-		UE_LOG(LogTemp, Error, TEXT("All blocks have zero or negative priority at cell (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
-		return false;
-	}
-
-	// Generate a random number between 0 and TotalWeight
-	float RandomValue = FMath::FRandRange(0.0f, TotalWeight);
-
-	// Find the block corresponding to the random value
+	// select random block based on probability
+	float RandomValue = FMath::FRand();
+	float AccumulatedProbability = 0.0f;
 	int ChosenIndex = 0;
-	for (int i = 0; i < CumulativeWeights.Num(); ++i)
+
+	for (int i = 0; i < CellBlocks.Num(); ++i)
 	{
-		if (RandomValue <= CumulativeWeights[i])
+		AccumulatedProbability += CellBlocks[i].Probability;
+		if (RandomValue <= AccumulatedProbability)
 		{
 			ChosenIndex = i;
 			break;
@@ -144,7 +93,6 @@ bool AWaveFunctionCollapse::CollapseCell(const FIntVector& Position)
 	Grid.Add(Position, ChosenBlock);
 	CellBlocks = { ChosenBlock }; // Reduce the possibilities to just the chosen block
 	Entropies[Index] = 0;
-
 
 	return true;
 }
@@ -242,7 +190,7 @@ void AWaveFunctionCollapse::Propagate(const FIntVector& Position)
 
 
 				Wave[NeighborIndex] = ValidBlocks;
-				Entropies[NeighborIndex] = CalculateEntropy(NeighborPosition);
+				Entropies[NeighborIndex] = CalculateEntropy(NeighborIndex);
 
 				if (ValidBlocks.Num() == 1)
 				{
@@ -260,9 +208,8 @@ int AWaveFunctionCollapse::GetIndex(const FIntVector& Position) const
 	return Position.X + Position.Y * GridSize.X + Position.Z * GridSize.X * GridSize.Y;
 }
 
-int AWaveFunctionCollapse::CalculateEntropy(const FIntVector& Position) const
+float AWaveFunctionCollapse::CalculateEntropy(int Index) const
 {
-	int Index = GetIndex(Position);
 	const TArray<FWFC_Block>& SlotModules = Wave[Index];
 
 	if (SlotModules.IsEmpty())
@@ -271,11 +218,27 @@ int AWaveFunctionCollapse::CalculateEntropy(const FIntVector& Position) const
 		return 0;
 	}
 
-	int Entropy = 0;
+	int TotalWeight = 0;
+
 	for (const FWFC_Block& Block : SlotModules)
 	{
-		Entropy += Block.Priority;
+		TotalWeight += Block.Weight;
 	}
+
+	float Entropy = 0.0f;
+	for (const FWFC_Block& Block : SlotModules)
+	{
+		float Probability = (float)Block.Weight / TotalWeight;
+		const_cast<FWFC_Block&>(Block).Probability = Probability; // TODO: Find a better way to update the block probability
+		if (Block.Probability <= 0)
+		{
+			UE_LOG(LogTemp, Error, TEXT("WaveFunctionCollapse: CalculateEntropy: Block probability is zero"));
+			return 0;
+		}
+		float PLogP = Probability * FMath::Log2(Probability);
+		Entropy -= PLogP;
+	}
+
 	return Entropy;
 }
 

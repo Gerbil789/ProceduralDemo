@@ -12,10 +12,10 @@ struct PROCEDURALALGORITHMS_API FWFC_Block
 public:
 	FWFC_Block() = default;
 
-	FWFC_Block(UStaticMesh* StaticMesh, const TArray<FWFC_Socket>& Sockets, int Rotation = 0, int Priority = 1) :
+	FWFC_Block(UStaticMesh* StaticMesh, const TArray<FWFC_Socket>& Sockets, int Rotation = 0, int Weight = 1) :
 		StaticMesh(StaticMesh),
 		Rotation(Rotation),
-		Priority(Priority),
+		Weight(Weight),
 		SocketFront(Sockets[0]),
 		SocketBack(Sockets[1]),
 		SocketRight(Sockets[2]),
@@ -23,20 +23,20 @@ public:
 		SocketUp(Sockets[4]),
 		SocketDown(Sockets[5])
 	{
-		//DisplayName = this->ToString();
 	}
-
-	//UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "WFC")
-	//FString DisplayName;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Block")
 	UStaticMesh* StaticMesh = nullptr;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Block")
-	int Rotation = 0; // 0, 90, 180, 270
+	// 0, 90, 180, 270
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Block")
+	int Rotation = 0; 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Block")
-	int Priority = 1;
+	int Weight = 1;
+
+	float Probability = 0.0f;
+	float PLogP = 0.0f;
 
 	// Sockets
 	UPROPERTY(BlueprintReadWrite, Category = "Block")

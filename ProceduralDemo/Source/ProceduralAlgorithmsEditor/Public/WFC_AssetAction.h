@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "AssetActionUtility.h"
 #include "WFC/WFC_Block.h"
+#include "WFC/WFC_DataSet.h"
 #include "WFC_AssetAction.generated.h"
 
 UCLASS()
@@ -27,4 +28,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "WFC")
 	bool SaveBlock(const FString& AssetPath, const FWFC_Block& Block);
+
+
+
+	UFUNCTION(BlueprintCallable, Category = "WFC")
+	void RecalculatePLogP(UWFC_DataSet* DataSet);
 };

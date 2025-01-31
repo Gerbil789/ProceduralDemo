@@ -104,3 +104,11 @@ bool UWFC_AssetAction::SaveBlock(const FString& AssetPath, const FWFC_Block& Blo
 	UE_LOG(LogTemp, Log, TEXT("Saved block to: %s"), *AssetPath);
 	return true;
 }
+
+void UWFC_AssetAction::RecalculatePLogP(UWFC_DataSet* DataSet)
+{
+	//for (FWFC_Block& Block : DataSet->Blocks)
+	//{
+	//	Block.RecalculatePLogP();
+	//}
+}
