@@ -1,7 +1,7 @@
 #include "WFC_AssetAction.h"
 #include "WFC/WFC_Utility.h"
 
-bool UWFC_AssetAction::ProcessStaticMeshes(const TArray<UStaticMesh*>& StaticMeshes, bool bAddEmpty, bool bAddFill, TArray<FWFC_Block>& OutBlocks)
+bool UWFC_AssetAction::ProcessStaticMeshes(const TArray<UStaticMesh*>& StaticMeshes, TArray<FWFC_Module>& OutBlocks)
 {
 	OutBlocks.Empty();
 	int SuccessCount = 0;
@@ -9,7 +9,7 @@ bool UWFC_AssetAction::ProcessStaticMeshes(const TArray<UStaticMesh*>& StaticMes
 	{
 		FString AssetName = StaticMesh->GetName();
 		
-		TArray<FWFC_Block> NewBlocks;
+		TArray<FWFC_Module> NewBlocks;
 		if (!WFC_Utility::CreateBlocks(AssetName, StaticMesh, NewBlocks))
 		{
 			UE_LOG(LogTemp, Error, TEXT("Failed to create block from asset name: %s"), *AssetName);
@@ -20,12 +20,12 @@ bool UWFC_AssetAction::ProcessStaticMeshes(const TArray<UStaticMesh*>& StaticMes
 	}
 
 	// Add empty and fill blocks if requested
-	if (bAddEmpty)
+	/*if (bAddEmpty)
 	{
 		FWFC_Socket EmptySocketHorizontal = FWFC_Socket(0, true, true, false, false);
 		FWFC_Socket EmptySocketVertical = FWFC_Socket(0, false, false, false, true);
 		TArray<FWFC_Socket> EmptySockets = { EmptySocketHorizontal, EmptySocketHorizontal, EmptySocketHorizontal, EmptySocketHorizontal, EmptySocketVertical, EmptySocketVertical };
-		FWFC_Block EmptyBlock = FWFC_Block(nullptr, EmptySockets);
+		FWFC_Module EmptyBlock = FWFC_Module(nullptr, EmptySockets);
 		OutBlocks.Add(EmptyBlock);
 	}
 
@@ -34,9 +34,9 @@ bool UWFC_AssetAction::ProcessStaticMeshes(const TArray<UStaticMesh*>& StaticMes
 		FWFC_Socket FillSocketHorizontal = FWFC_Socket(1, true, true, false, false);
 		FWFC_Socket FillSocketVertical = FWFC_Socket(1, false, false, false, true);
 		TArray<FWFC_Socket> FillSockets = { FillSocketHorizontal, FillSocketHorizontal, FillSocketHorizontal, FillSocketHorizontal, FillSocketVertical, FillSocketVertical };
-		FWFC_Block FillBlock = FWFC_Block(nullptr, FillSockets);
+		FWFC_Module FillBlock = FWFC_Module(nullptr, FillSockets);
 		OutBlocks.Add(FillBlock);
-	}
+	}*/
 
 	UE_LOG(LogTemp, Display, TEXT("---------------------------------"));
 	UE_LOG(LogTemp, Warning, TEXT("Processed %d/%d Assets."), SuccessCount, StaticMeshes.Num());
@@ -46,7 +46,7 @@ bool UWFC_AssetAction::ProcessStaticMeshes(const TArray<UStaticMesh*>& StaticMes
 }
 
 
-bool UWFC_AssetAction::SaveDataSet(const FString& AssetPath, const TArray<FWFC_Block>& Blocks)
+bool UWFC_AssetAction::SaveDataSet(const FString& AssetPath, const TArray<FWFC_Module>& Blocks)
 {
 	if (Blocks.IsEmpty())
 	{
@@ -64,7 +64,7 @@ bool UWFC_AssetAction::SaveDataSet(const FString& AssetPath, const TArray<FWFC_B
 	return true;
 }
 
-bool UWFC_AssetAction::ProcessStaticMesh(UStaticMesh* StaticMesh, FWFC_Block& OutBlock)
+bool UWFC_AssetAction::ProcessStaticMesh(UStaticMesh* StaticMesh, FWFC_Module& OutBlock)
 {
 	if (!StaticMesh)
 	{
@@ -90,11 +90,11 @@ bool UWFC_AssetAction::ProcessStaticMesh(UStaticMesh* StaticMesh, FWFC_Block& Ou
 		return false;
 	}
 
-	OutBlock = FWFC_Block(StaticMesh, Sockets);
+	OutBlock = FWFC_Module(StaticMesh, Sockets);
 	return true;
 }
 
-bool UWFC_AssetAction::SaveBlock(const FString& AssetPath, const FWFC_Block& Block)
+bool UWFC_AssetAction::SaveBlock(const FString& AssetPath, const FWFC_Module& Block)
 {
 	if (!WFC_Utility::SaveData(AssetPath, Block))
 	{
@@ -103,12 +103,4 @@ bool UWFC_AssetAction::SaveBlock(const FString& AssetPath, const FWFC_Block& Blo
 	}
 	UE_LOG(LogTemp, Log, TEXT("Saved block to: %s"), *AssetPath);
 	return true;
-}
-
-void UWFC_AssetAction::RecalculatePLogP(UWFC_DataSet* DataSet)
-{
-	//for (FWFC_Block& Block : DataSet->Blocks)
-	//{
-	//	Block.RecalculatePLogP();
-	//}
 }

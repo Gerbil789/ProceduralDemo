@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "AssetActionUtility.h"
-#include "WFC/WFC_Block.h"
+#include "WFC/WFC_Module.h"
 #include "WFC/WFC_DataSet.h"
 #include "WFC_AssetAction.generated.h"
 
@@ -16,21 +16,17 @@ public:
 
 	// Process DataSet
 	UFUNCTION(BlueprintCallable, Category = "WFC")
-	bool ProcessStaticMeshes(const TArray<UStaticMesh*>& StaticMeshes, bool bAddEmpty, bool bAddFill, TArray<FWFC_Block>& OutBlocks);
+	bool ProcessStaticMeshes(const TArray<UStaticMesh*>& StaticMeshes, TArray<FWFC_Module>& OutBlocks);
 
 	UFUNCTION(BlueprintCallable, Category = "WFC")
-	bool SaveDataSet(const FString& AssetPath, const TArray<FWFC_Block>& Blocks);
+	bool SaveDataSet(const FString& AssetPath, const TArray<FWFC_Module>& Blocks);
 
 
 	// Prpcess one Block
 	UFUNCTION(BlueprintCallable, Category = "WFC")
-	bool ProcessStaticMesh(UStaticMesh* StaticMesh, FWFC_Block& OutBlock);
+	bool ProcessStaticMesh(UStaticMesh* StaticMesh, FWFC_Module& OutBlock);
 
 	UFUNCTION(BlueprintCallable, Category = "WFC")
-	bool SaveBlock(const FString& AssetPath, const FWFC_Block& Block);
+	bool SaveBlock(const FString& AssetPath, const FWFC_Module& Block);
 
-
-
-	UFUNCTION(BlueprintCallable, Category = "WFC")
-	void RecalculatePLogP(UWFC_DataSet* DataSet);
 };

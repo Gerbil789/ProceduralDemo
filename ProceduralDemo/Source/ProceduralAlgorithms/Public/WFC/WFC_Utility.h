@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "WFC_Socket.h"
-#include "WFC_Block.h"
+#include "WFC_Module.h"
 
 class PROCEDURALALGORITHMS_API WFC_Utility
 {
@@ -21,7 +21,7 @@ public:
 	* and "fill" blocks to the result. Progress is displayed in the editor via a
 	* progress dialog. Logs and dialog messages provide feedback on the operation.
 	*/
-	static bool LoadBlocksFromDirectory(const FString& DirectoryPath, TArray<FWFC_Block>& OutBlocks, bool AddEmpty = false, bool AddFill = false);
+	static bool LoadBlocksFromDirectory(const FString& DirectoryPath, TArray<FWFC_Module>& OutBlocks, bool AddEmpty = false, bool AddFill = false);
 
 
 	/**
@@ -37,16 +37,16 @@ public:
 	* and saves the package to disk. Logs provide detailed feedback on the process,
 	* including errors for invalid paths or save failures.
 	*/
-	static bool SaveData(const FString& AssetPath, const TArray<FWFC_Block>& Blocks);
+	static bool SaveData(const FString& AssetPath, const TArray<FWFC_Module>& Blocks);
 
-	static bool SaveData(const FString& AssetPath, const FWFC_Block& Block);
+	static bool SaveData(const FString& AssetPath, const FWFC_Module& Block);
 
 	static bool CreateSockets(TArray<FString> Tokens, TArray<FWFC_Socket>& OutSockets);
 
-	static bool CreateBlocks(const FString& AssetName, UStaticMesh* Mesh, TArray<FWFC_Block>& OutBlocks);
+	static bool CreateBlocks(const FString& AssetName, UStaticMesh* Mesh, TArray<FWFC_Module>& OutBlocks);
 private:
 	
-	static FWFC_Block RotateBlock(const FWFC_Block& Block, const int& Rotation);
+	static FWFC_Module RotateBlock(const FWFC_Module& Block, const int& Rotation);
 };
 
 

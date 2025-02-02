@@ -15,34 +15,30 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Socket")
 	int32 Id = 0;
 
-	// Using an enum for socket type (Horizontal/Vertical)
+	// if false, the socket is vertical
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Socket")
 	bool bIsHorizontal = false;
 
-	// Symmetry flag for the socket
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Socket")
 	bool bIsSymmetric = false;
 
-	// Flipped state for the socket
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Socket")
 	bool bIsFlipped = false;
 
-	// Flag to mark if rotation is irrelevant for the socket
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Socket")
-	bool bIsIrelevantRotation = false;
+	bool bIsInvariantRotation = false;
 
-	// Rotation of the socket
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Socket")
 	int Rotation = 0;
 
 	FWFC_Socket() = default;
 
-	FWFC_Socket(int32 InId, bool bInIsHorizontal, bool bInIsSymmetric, bool bInIsFlipped, bool bInIsIrelevantRotation, int Rotation = 0)
+	FWFC_Socket(int32 InId, bool bInIsHorizontal, bool bInIsSymmetric, bool bInIsFlipped, bool bIsInvariantRotation, int Rotation = 0)
 		: Id(InId),
 		bIsHorizontal(bInIsHorizontal),
 		bIsSymmetric(bInIsSymmetric),
 		bIsFlipped(bInIsFlipped),
-		bIsIrelevantRotation(bInIsIrelevantRotation),
+		bIsInvariantRotation(bIsInvariantRotation),
 		Rotation(Rotation)
 	{
 	}
@@ -79,13 +75,13 @@ public:
 		else // if vertical
 		{
 			// Rotation irrelevance check
-			if (bIsIrelevantRotation && !Other.bIsIrelevantRotation)
+			if (bIsInvariantRotation && !Other.bIsInvariantRotation)
 			{
 				return false; // irrelevant rotation socket can only connect to irrelevant rotation socket
 			}
 
 			// Check rotation match
-			if(!bIsIrelevantRotation)
+			if(!bIsInvariantRotation)
 			{
 				if (Rotation != Other.Rotation)
 				{
@@ -108,7 +104,7 @@ public:
 		{
 			str += TEXT("f");
 		}
-		if (bIsIrelevantRotation)
+		if (bIsInvariantRotation)
 		{
 			str += TEXT("i");
 		}

@@ -49,7 +49,7 @@ void AWFC_DataProcessorActor::Preview()
 
     FVector Location = FVector(Offset * Col, Offset * Row, 0) - GridCenter;
 
-    AWFC_BlockPreviewActor* NewActor = GetWorld()->SpawnActor<AWFC_BlockPreviewActor>(Location, FRotator::ZeroRotator);
+    AWFC_ModulePreviewActor* NewActor = GetWorld()->SpawnActor<AWFC_ModulePreviewActor>(Location, FRotator::ZeroRotator);
     if (!NewActor)
     {
       UE_LOG(LogTemp, Error, TEXT("Failed to spawn actor."));
@@ -121,7 +121,7 @@ void AWFC_DataProcessorActor::SaveBlock()
 		return;
 	}
 
-	FWFC_Block NewBlock = FWFC_Block(StaticMesh, Sockets);
+	FWFC_Module NewBlock = FWFC_Module(StaticMesh, Sockets);
 
 	FString Path = SaveAssetPath + "/" + SaveAssetName;
 	if (!WFC_Utility::SaveData(Path, NewBlock))

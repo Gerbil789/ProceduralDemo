@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
-#include "WFC/WFC_Block.h"
+#include "WFC/WFC_Module.h"
 #include "WFC/WFC_DataSet.h"
 #include "WFC/WaveFunctionCollapse.h"
 #include "WFC_WorldManager.generated.h"

@@ -72,7 +72,7 @@ void AWFC_WorldManager::ProcessNextChunk()
     {
       // Generate the chunk data in the background
       FIntVector GridCoordinates = FIntVector(ChunkCoordinates.X * GridSize.X, ChunkCoordinates.Y * GridSize.Y, 0);
-      TMap<FIntVector, FWFC_Block> ExpandedGrid;
+      TMap<FIntVector, FWFC_Module> ExpandedGrid;
       ExpandedGrid.Reserve((GridSize.X + 2) * (GridSize.Y + 2) * GridSize.Z);
 
       for (int x = -1; x <= GridSize.X; x++)
@@ -108,7 +108,7 @@ void AWFC_WorldManager::ProcessNextChunk()
       }
 
       // Trim expanded grid
-      TMap<FIntVector, FWFC_Block> NewGridData;
+      TMap<FIntVector, FWFC_Module> NewGridData;
       NewGridData.Reserve(GridSize.X * GridSize.Y * GridSize.Z);
       for (int x = 1; x <= GridSize.X; x++)
       {
@@ -116,7 +116,7 @@ void AWFC_WorldManager::ProcessNextChunk()
         {
           for (int z = 0; z < GridSize.Z; z++)
           {
-            FWFC_Block Block = ExpandedGrid[FIntVector(x, y, z)];
+            FWFC_Module Block = ExpandedGrid[FIntVector(x, y, z)];
             FIntVector Position = GridCoordinates + FIntVector(x - 1, y - 1, z);
             NewGridData.Add(Position, Block);
             Grid.Add(Position, Block);
@@ -130,7 +130,7 @@ void AWFC_WorldManager::ProcessNextChunk()
           for (auto& Pair : NewGridData)
           {
             FIntVector Position = Pair.Key;
-            FWFC_Block Block = Pair.Value;
+            FWFC_Module Block = Pair.Value;
             if (HISMComponents.Contains(Block.StaticMesh))
             {
               UHierarchicalInstancedStaticMeshComponent* HISMComp = HISMComponents[Block.StaticMesh];
@@ -158,7 +158,7 @@ bool AWFC_WorldManager::LoadDataset()
     return false;
   }
 
-  if (Dataset->Blocks.Num() == 0)
+  if (Dataset->Modules.Num() == 0)
   {
     UE_LOG(LogTemp, Error, TEXT("No blocks in data set."));
     return false;
@@ -175,7 +175,7 @@ bool AWFC_WorldManager::LoadDataset()
   HISMComponents.Empty();
 
   // Create InstancedStaticMeshComponent for each unique static mesh
-  for (const FWFC_Block& Block : Dataset->Blocks)
+  for (const FWFC_Module& Block : Dataset->Modules)
   {
     if (!Block.StaticMesh && !Block.IsEmpty())
     {
@@ -208,7 +208,7 @@ bool AWFC_WorldManager::LoadDataset()
     UE_LOG(LogTemp, Display, TEXT("Created and registered InstancedStaticMeshComponent for mesh: %s"), *Block.ToString());
   }
 
-  AWaveFunctionCollapse::SetBlocks(Dataset->Blocks);
+  AWaveFunctionCollapse::SetModules(Dataset->Modules);
 
   return true;
 }

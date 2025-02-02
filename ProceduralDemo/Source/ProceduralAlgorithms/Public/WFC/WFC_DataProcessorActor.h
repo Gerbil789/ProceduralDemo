@@ -2,8 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "WFC_Block.h"
-#include "WFC_BlockPreviewActor.h"
+#include "WFC_Module.h"
+#include "WFC_ModulePreviewActor.h"
 #include "WFC_DataProcessorActor.generated.h"
 
 // This class is used to preview blocks in the editor, so i can inspect if the sockets are placed correctly
@@ -26,7 +26,7 @@ public:
   //-------------------------------------------------------------------------------------
 
   UPROPERTY(EditAnywhere, Category = "WFC_Dataset")
-  FString MeshDirectoryPath = "/Game/TestMeshes";
+  FString MeshDirectoryPath = "/Game/WFC/Meshes";
 
   UPROPERTY(EditAnywhere, Category = "WFC_Dataset")
 	UStaticMesh* WireframeMesh = nullptr;
@@ -61,5 +61,5 @@ public:
   UStaticMesh* StaticMesh = nullptr;
 
 private:
-  TArray<FWFC_Block> Blocks;
+  TArray<FWFC_Module> Blocks;
 };

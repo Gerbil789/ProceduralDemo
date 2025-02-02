@@ -1,13 +1,17 @@
 #include "WFC/WaveFunctionCollapse.h"
 
-AWaveFunctionCollapse::AWaveFunctionCollapse()
-{
+const TArray<FIntVector> AWaveFunctionCollapse::Directions = {
+		FIntVector(1, 0, 0),
+		FIntVector(-1, 0, 0),
+		FIntVector(0, 1, 0),
+		FIntVector(0, -1, 0),
+		FIntVector(0, 0, 1),
+		FIntVector(0, 0, -1)
+};
 
-}
-
-void AWaveFunctionCollapse::SetBlocks(const TArray<FWFC_Block>& _Blocks)
+void AWaveFunctionCollapse::SetModules(const TArray<FWFC_Module>& _Modules)
 {
-	this->Blocks = _Blocks;
+	this->Modules = _Modules;
 	BuildCompatibilityTable();
 }
 
@@ -22,14 +26,14 @@ bool AWaveFunctionCollapse::Run()
 	while (true)
 	{
 		FIntVector LowestEntropyCell;
-		if (!FindLowestEntropyCell(LowestEntropyCell))
+		if (!FindLowestEntropySlot(LowestEntropyCell))
 		{
 			break; // We have collapsed all cells
 		}
 
-		if (!CollapseCell(LowestEntropyCell))
+		if (!CollapseSlot(LowestEntropyCell))
 		{
-			break; // No valid blocks to collapse to
+			break; // No valid modules to collapse to
 		}
 
 		Propagate(LowestEntropyCell);
@@ -40,97 +44,71 @@ bool AWaveFunctionCollapse::Run()
 
 bool AWaveFunctionCollapse::Initialize()
 {
-	if(Blocks.IsEmpty())
+	if(Modules.IsEmpty())
 	{
-		UE_LOG(LogTemp, Error, TEXT("WaveFunctionCollapse: No blocks to initialize"));
+		UE_LOG(LogTemp, Error, TEXT("WaveFunctionCollapse: No modules to initialize"));
 		return false;
 	}
 
-	int TotalCells = GridSize.X * GridSize.Y * GridSize.Z;
-	Wave.SetNum(TotalCells);
-	Entropies.SetNum(TotalCells);
-	Grid.Reserve(TotalCells);
+	int TotalSlots = GridSize.X * GridSize.Y * GridSize.Z;
+	Wave.SetNum(TotalSlots);
+	Grid.Reserve(TotalSlots);
 
-	for (int i = 0; i < TotalCells; ++i)
+
+	if (RandomSeed)
 	{
-		Wave[i] = Blocks;
-		Entropies[i] = CalculateEntropy(i);
+		Seed = FMath::Rand();
+	}
+
+	RandomStream.Initialize(Seed);
+
+	for (int i = 0; i < TotalSlots; i++)
+	{
+		Wave[i] = WFC_ModuleSet(Modules);
 	}
 
 	return true;
 }
 
-bool AWaveFunctionCollapse::CollapseCell(const FIntVector& Position)
+bool AWaveFunctionCollapse::CollapseSlot(const FIntVector& Position)
 {
 	int Index = GetIndex(Position);
-	TArray<FWFC_Block>& CellBlocks = Wave[Index];
-
-	if (CellBlocks.IsEmpty())
+	FWFC_Module CollapsedModule;
+	
+	if(!Wave[Index].Collapse(CollapsedModule, RandomStream))
 	{
-		UE_LOG(LogTemp, Error, TEXT("No blocks to collapse to at cell (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		UE_LOG(LogTemp, Error, TEXT("WaveFunctionCollapse: Failed to collapse slot (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 		return false;
 	}
-
-	// select random block based on probability
-	float RandomValue = FMath::FRand();
-	float AccumulatedProbability = 0.0f;
-	int ChosenIndex = 0;
-
-	for (int i = 0; i < CellBlocks.Num(); ++i)
-	{
-		AccumulatedProbability += CellBlocks[i].Probability;
-		if (RandomValue <= AccumulatedProbability)
-		{
-			ChosenIndex = i;
-			break;
-		}
-	}
-
-	// Select the block
-	FWFC_Block ChosenBlock = CellBlocks[ChosenIndex];
 
 	// Update the grid and wave
-	Grid.Add(Position, ChosenBlock);
-	CellBlocks = { ChosenBlock }; // Reduce the possibilities to just the chosen block
-	Entropies[Index] = 0;
-
+	Grid.Add(Position, CollapsedModule);
 	return true;
 }
 
-bool AWaveFunctionCollapse::CollapseCellWithBlock(const FIntVector& Position, const FWFC_Block& Block)
+bool AWaveFunctionCollapse::CollapseSlotToModule(const FIntVector& Position, const FWFC_Module& Module)
 {
 	int Index = GetIndex(Position);
-	if (Wave[Index].IsEmpty())
+	if (Wave[Index].Modules.IsEmpty())
 	{
-		UE_LOG(LogTemp, Error, TEXT("No blocks to collapse to at cell (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		UE_LOG(LogTemp, Error, TEXT("No modules to collapse to at slot (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 		return false;
 	}
 
-	if (!Wave[Index].Contains(Block))
+	if (!Wave[Index].Modules.Contains(Module))
 	{
-		UE_LOG(LogTemp, Error, TEXT("Block is not compatible with cell (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		UE_LOG(LogTemp, Error, TEXT("Module is not compatible with slot (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 		return false;
 	}
 
-	Wave[Index] = { Block };
-	Entropies[Index] = 0;	
-	Grid.Add(Position, Block);
+	Wave[Index].Modules = { Module };
+	Wave[Index].Entropy = 0;
+	Grid.Add(Position, Module);
 	return true;
 }
 
 void AWaveFunctionCollapse::Propagate(const FIntVector& Position)
 {
-	const TArray<FIntVector> Directions =
-	{
-			FIntVector(1, 0, 0),
-			FIntVector(-1, 0, 0),
-			FIntVector(0, 1, 0),
-			FIntVector(0, -1, 0),
-			FIntVector(0, 0, 1),
-			FIntVector(0, 0, -1)
-	};
-
-
 	TArray<FIntVector> PropagationStack;
 	PropagationStack.Add(Position);
 
@@ -151,50 +129,43 @@ void AWaveFunctionCollapse::Propagate(const FIntVector& Position)
 			}
 
 			int NeighborIndex = GetIndex(NeighborPosition);
-			TArray<FWFC_Block>& NeighborBlocks = Wave[NeighborIndex];
-			TArray<FWFC_Block> ValidBlocks;
+			TArray<FWFC_Module>& NeighborModules = Wave[NeighborIndex].Modules;
+			TArray<FWFC_Module> ValidModules;
 
-			TArray<FWFC_Block> CurrentBlocks = Wave[CurrentIndex];
-			TSet<FWFC_Block> ValidNeighborsSet;
-			for (const FWFC_Block& CurrentBlock : CurrentBlocks)
+			TArray<FWFC_Module> CurrentModules = Wave[CurrentIndex].Modules;
+			TSet<FWFC_Module> ValidNeighborsSet;
+			for (const FWFC_Module& CurrentModule : CurrentModules)
 			{
-				if (CompatibilityTable[Dir].Contains(CurrentBlock))
+				if (CompatibilityTable[Dir].Contains(CurrentModule))
 				{
-					ValidNeighborsSet.Append(CompatibilityTable[Dir][CurrentBlock]);
+					ValidNeighborsSet.Append(CompatibilityTable[Dir][CurrentModule]);
 				}
 				else
 				{
-					UE_LOG(LogTemp, Error, TEXT("WaveFunctionCollapse: CompatibilityTable does not contain block"));
+					UE_LOG(LogTemp, Error, TEXT("WaveFunctionCollapse: CompatibilityTable does not contain module"));
 				}
 			}
 
 			// Convert the set to an array
-			TArray<FWFC_Block> ValidNeighbors = ValidNeighborsSet.Array();
+			TArray<FWFC_Module> ValidNeighbors = ValidNeighborsSet.Array();
 
-			for (const FWFC_Block& NeighborBlock : NeighborBlocks)
+			for (const FWFC_Module& NeighborModule : NeighborModules)
 			{
-				if (ValidNeighbors.Contains(NeighborBlock))
+				if (ValidNeighbors.Contains(NeighborModule))
 				{
-					ValidBlocks.Add(NeighborBlock);
+					ValidModules.Add(NeighborModule);
 				}
 			}
 
 
-			if (ValidBlocks.Num() < NeighborBlocks.Num())
+			if (ValidModules.Num() < NeighborModules.Num())
 			{
-				//if (ValidBlocks.IsEmpty())
-				//{
-				//	ErrorMsg = FString::Printf(TEXT("No valid blocks to propagate to at cell (%d, %d, %d)"), NeighborPosition.X, NeighborPosition.Y, NeighborPosition.Z);
-				//	return;
-				//}
+				Wave[NeighborIndex].Modules = ValidModules;
+				Wave[NeighborIndex].CalculateEntropy();
 
-
-				Wave[NeighborIndex] = ValidBlocks;
-				Entropies[NeighborIndex] = CalculateEntropy(NeighborIndex);
-
-				if (ValidBlocks.Num() == 1)
+				if (ValidModules.Num() == 1)
 				{
-					Grid.Add(NeighborPosition, ValidBlocks[0]);
+					Grid.Add(NeighborPosition, ValidModules[0]);
 				}
 
 				PropagationStack.Add(NeighborPosition);
@@ -208,141 +179,56 @@ int AWaveFunctionCollapse::GetIndex(const FIntVector& Position) const
 	return Position.X + Position.Y * GridSize.X + Position.Z * GridSize.X * GridSize.Y;
 }
 
-float AWaveFunctionCollapse::CalculateEntropy(int Index) const
-{
-	const TArray<FWFC_Block>& SlotModules = Wave[Index];
-
-	if (SlotModules.IsEmpty())
-	{
-		UE_LOG(LogTemp, Error, TEXT("WaveFunctionCollapse: CalculateEntropy: SlotModules is empty"));
-		return 0;
-	}
-
-	int TotalWeight = 0;
-
-	for (const FWFC_Block& Block : SlotModules)
-	{
-		TotalWeight += Block.Weight;
-	}
-
-	float Entropy = 0.0f;
-	for (const FWFC_Block& Block : SlotModules)
-	{
-		float Probability = (float)Block.Weight / TotalWeight;
-		const_cast<FWFC_Block&>(Block).Probability = Probability; // TODO: Find a better way to update the block probability
-		if (Block.Probability <= 0)
-		{
-			UE_LOG(LogTemp, Error, TEXT("WaveFunctionCollapse: CalculateEntropy: Block probability is zero"));
-			return 0;
-		}
-		float PLogP = Probability * FMath::Log2(Probability);
-		Entropy -= PLogP;
-	}
-
-	return Entropy;
-}
-
 void AWaveFunctionCollapse::BuildCompatibilityTable()
 {
 	CompatibilityTable.Empty();
 	CompatibilityTable.Reserve(6);
 
-	const TArray<FIntVector> Directions =
-	{
-			FIntVector(1, 0, 0),
-			FIntVector(-1, 0, 0),
-			FIntVector(0, 1, 0),
-			FIntVector(0, -1, 0),
-			FIntVector(0, 0, 1),
-			FIntVector(0, 0, -1)
-	};
-
-	// Precompute valid neighbors for each block and direction
 	for (const FIntVector& Dir : Directions)
 	{
-		TMap<FWFC_Block, TArray<FWFC_Block>>& DirectionTable = CompatibilityTable.Add(Dir);
+		TMap<FWFC_Module, TArray<FWFC_Module>>& DirectionTable = CompatibilityTable.Add(Dir);
 
-		for (const FWFC_Block& BlockA : Blocks)
+		for (const FWFC_Module& ModuleA : Modules)
 		{
-			TArray<FWFC_Block> ValidNeighbors;
+			TArray<FWFC_Module> ValidNeighbors;
 
-			for (const FWFC_Block& BlockB : Blocks)
+			for (const FWFC_Module& ModuleB : Modules)
 			{
-				if (CheckCompatibility(BlockA, BlockB, Dir))
+				if(ModuleA.IsCompatibleWith(ModuleB, Dir))
 				{
-					ValidNeighbors.Add(BlockB);
+					ValidNeighbors.Add(ModuleB);
 				}
 			}
-
-			DirectionTable.Add(BlockA, ValidNeighbors);
+			DirectionTable.Add(ModuleA, ValidNeighbors);
 		}
 	}
-
-
 }
 
-bool AWaveFunctionCollapse::CheckCompatibility(const FWFC_Block& CollapsedBlock, const FWFC_Block& NeighborBlock, const FIntVector& Direction)
-{
-	if (Direction == FIntVector(1, 0, 0))
-	{
-		return CollapsedBlock.SocketFront.CanConnect(NeighborBlock.SocketBack);
-	}
-	else if (Direction == FIntVector(-1, 0, 0))
-	{
-		return CollapsedBlock.SocketBack.CanConnect(NeighborBlock.SocketFront);
-	}
-	else if (Direction == FIntVector(0, 1, 0))
-	{
-		return CollapsedBlock.SocketRight.CanConnect(NeighborBlock.SocketLeft);
-	}
-	else if (Direction == FIntVector(0, -1, 0))
-	{
-		return CollapsedBlock.SocketLeft.CanConnect(NeighborBlock.SocketRight);
-	}
-	else if (Direction == FIntVector(0, 0, 1))
-	{
-		return CollapsedBlock.SocketUp.CanConnect(NeighborBlock.SocketDown);
-	}
-	else if (Direction == FIntVector(0, 0, -1))
-	{
-		return CollapsedBlock.SocketDown.CanConnect(NeighborBlock.SocketUp);
-	}
-
-	UE_LOG(LogTemp, Error, TEXT("CheckCompatibility: Invalid direction"));
-	return false;
-}
-
-bool AWaveFunctionCollapse::FindLowestEntropyCell(FIntVector& OutPosition)
+bool AWaveFunctionCollapse::FindLowestEntropySlot(FIntVector& OutPosition)
 {
 	int MinEntropy = TNumericLimits<int>::Max();
 	TArray<FIntVector> LowestEntropySlots; // Store all cells with the minimum entropy
 
 	// Find the minimum entropy and collect all cells with that entropy
-	for (int i = 0; i < Entropies.Num(); ++i)
+	for (int i = 0; i < Wave.Num(); ++i)
 	{
-		// Entropy == 1 means the cell is already collapsed
-		if (Entropies[i] > 0)
+		const auto& Slot = Wave[i];
+		if (Slot.Entropy == 0) continue; // Skip collapsed cells
+
+		FIntVector Position(i % GridSize.X, (i / GridSize.X) % GridSize.Y, i / (GridSize.X * GridSize.Y));
+
+		if (Slot.Entropy < MinEntropy)
 		{
-			if (Entropies[i] < MinEntropy)
-			{
-				// Found a new minimum entropy
-				MinEntropy = Entropies[i];
-				LowestEntropySlots.Reset(); // Clear the previous list
-				LowestEntropySlots.Add(FIntVector(i % GridSize.X, (i / GridSize.X) % GridSize.Y, i / (GridSize.X * GridSize.Y)));
-			}
-			else if (Entropies[i] == MinEntropy)
-			{
-				// Found another cell with the same minimum entropy
-				LowestEntropySlots.Add(FIntVector(i % GridSize.X, (i / GridSize.X) % GridSize.Y, i / (GridSize.X * GridSize.Y)));
-			}
+			MinEntropy = Slot.Entropy;
+			LowestEntropySlots = { Position }; // Reset and add new min entropy slot
+		}
+		else if (Slot.Entropy == MinEntropy)
+		{
+			LowestEntropySlots.Add(Position);
 		}
 	}
 
-	// If no cell has entropy > 1, we are done
-	if (LowestEntropySlots.IsEmpty())
-	{
-		return false;
-	}
+	if (LowestEntropySlots.IsEmpty()) return false;
 
 	if (LowestEntropySlots.Num() == 1)
 	{
@@ -350,58 +236,20 @@ bool AWaveFunctionCollapse::FindLowestEntropyCell(FIntVector& OutPosition)
 		return true;
 	}
 
-
 	// Select module from the lowest entropy slots where the module has the least amount of possibilities
-	int MinPossibilities = TNumericLimits<int>::Max();
-	FIntVector MinPossibilitiesPosition = FIntVector(-1, -1, -1);
-
-	for (const FIntVector& Position : LowestEntropySlots)
-	{
-		int Index = GetIndex(Position);
-		int NumPossibilities = Wave[Index].Num();
-		if (NumPossibilities < MinPossibilities)
+	const FIntVector* MinPossibilitiesPosition = Algo::MinElement(LowestEntropySlots,
+		[this](const FIntVector& A, const FIntVector& B)
 		{
-			MinPossibilities = NumPossibilities;
-			MinPossibilitiesPosition = Position;
-		}
-	}
+			return Wave[GetIndex(A)].Modules.Num() < Wave[GetIndex(B)].Modules.Num();
+		});
 
-	if (MinPossibilitiesPosition == FIntVector(-1, -1, -1))
+	if (!MinPossibilitiesPosition)
 	{
-		UE_LOG(LogTemp, Error, TEXT("WaveFunctionCollapse: FindLowestEntropyCell: MinPossibilitiesPosition is invalid"));
+		UE_LOG(LogTemp, Error, TEXT("WaveFunctionCollapse: FindLowestEntropySlot: No valid slot found"));
 		return false;
 	}
 
-	OutPosition = MinPossibilitiesPosition;
-
-
-	// //Sort cells by Z coordinate (ascending order)
-	//Algo::Sort(LowestEntropySlots, [](const FIntVector& A, const FIntVector& B)
-	//	{
-	//		return A.Z < B.Z; // Sort by Z coordinate
-	//	});
-
-	//// Find all cells with the lowest Z coordinate
-	//int LowestZ = LowestEntropySlots[0].Z; // The lowest Z coordinate after sorting
-	//TArray<FIntVector> LowestZCells;
-
-	//for (const FIntVector& Cell : LowestEntropySlots)
-	//{
-	//	if (Cell.Z == LowestZ)
-	//	{
-	//		LowestZCells.Add(Cell);
-	//	}
-	//	else
-	//	{
-	//		break; // All remaining cells have higher Z coordinates
-	//	}
-	//}
-
-	//// Randomly select one of the cells with the lowest Z coordinate
-	//int RandomIndex = FMath::RandRange(0, LowestZCells.Num() - 1);
-	//OutPosition = LowestZCells[RandomIndex];
-
-	//OutPosition = LowestEntropyCells[FMath::RandRange(0, LowestEntropyCells.Num() - 1)];
+	OutPosition = *MinPossibilitiesPosition;
 
 	return true;
 }

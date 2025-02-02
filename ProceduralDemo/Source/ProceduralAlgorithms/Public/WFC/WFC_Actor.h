@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "WFC_Block.h"
+#include "WFC_Module.h"
 #include "WFC_DataSet.h"
 #include "WFC/WaveFunctionCollapse.h"
 #include "Components/InstancedStaticMeshComponent.h"
@@ -23,7 +23,7 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, CallInEditor, Category = "WFC", meta = (DisplayName = "Generate"))
 	void GenerateMesh();
 
-	UFUNCTION(BlueprintCallable, CallInEditor, Category = "WFC", meta = (DisplayName = "Reload"))
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, CallInEditor, Category = "WFC", meta = (DisplayName = "Reload"))
 	void LoadDataset();
 
 	UFUNCTION(BlueprintCallable, CallInEditor, Category = "WFC", meta = (ToolTip = "Delete all mesh instances & Clean Grid"), meta = (DisplayName = "CleanUp"))
@@ -40,6 +40,9 @@ protected:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "WFC")
 	int Offset = 200;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "WFC")
+	bool Debug = false;
 
 private:
 	TMap<UStaticMesh*, UInstancedStaticMeshComponent*> ISMComponents = TMap<UStaticMesh*, UInstancedStaticMeshComponent*>();

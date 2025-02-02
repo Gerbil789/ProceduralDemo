@@ -4,7 +4,7 @@
 #include "WFC/WFC_DataSet.h"
 #include "Misc/Paths.h"
 
-bool WFC_Utility::LoadBlocksFromDirectory(const FString& DirectoryPath, TArray<FWFC_Block>& OutBlocks, bool AddEmpty, bool AddFill)
+bool WFC_Utility::LoadBlocksFromDirectory(const FString& DirectoryPath, TArray<FWFC_Module>& OutBlocks, bool AddEmpty, bool AddFill)
 {
 	OutBlocks.Empty();
 
@@ -62,7 +62,7 @@ bool WFC_Utility::LoadBlocksFromDirectory(const FString& DirectoryPath, TArray<F
 		StaticMeshCount++;
 		FString AssetName = AssetData.AssetName.ToString();
 
-		TArray<FWFC_Block> NewBlocks;
+		TArray<FWFC_Module> NewBlocks;
 		if (CreateBlocks(AssetName, StaticMesh, NewBlocks) == false)
 		{
 			UE_LOG(LogTemp, Error, TEXT("Failed to create block from asset name: %s"), *AssetName);
@@ -89,7 +89,7 @@ bool WFC_Utility::LoadBlocksFromDirectory(const FString& DirectoryPath, TArray<F
 		FWFC_Socket EmptySocketHorizontal = FWFC_Socket(0, true, true, false, false);
 		FWFC_Socket EmptySocketVertical = FWFC_Socket(0, false, false, false, true);
 		TArray<FWFC_Socket> EmptySockets = { EmptySocketHorizontal, EmptySocketHorizontal, EmptySocketHorizontal, EmptySocketHorizontal, EmptySocketVertical, EmptySocketVertical };
-		FWFC_Block EmptyBlock = FWFC_Block(nullptr, EmptySockets);
+		FWFC_Module EmptyBlock = FWFC_Module(nullptr, EmptySockets);
 		OutBlocks.Add(EmptyBlock);
 	}
 
@@ -98,14 +98,14 @@ bool WFC_Utility::LoadBlocksFromDirectory(const FString& DirectoryPath, TArray<F
 		FWFC_Socket FillSocketHorizontal = FWFC_Socket(1, true, true, false, false);
 		FWFC_Socket FillSocketVertical = FWFC_Socket(1, false, false, false, true);
 		TArray<FWFC_Socket> FillSockets = { FillSocketHorizontal, FillSocketHorizontal, FillSocketHorizontal, FillSocketHorizontal, FillSocketVertical, FillSocketVertical };
-		FWFC_Block FillBlock = FWFC_Block(nullptr, FillSockets);
+		FWFC_Module FillBlock = FWFC_Module(nullptr, FillSockets);
 		OutBlocks.Add(FillBlock);
 	}
 
 	return true;
 }
 
-bool WFC_Utility::SaveData(const FString& AssetPath, const TArray<FWFC_Block>& Blocks)
+bool WFC_Utility::SaveData(const FString& AssetPath, const TArray<FWFC_Module>& Modules)
 {
 	if (!AssetPath.StartsWith(TEXT("/Game/")))
 	{
@@ -152,7 +152,7 @@ bool WFC_Utility::SaveData(const FString& AssetPath, const TArray<FWFC_Block>& B
 		return false;
 	}
 
-	DataAsset->Blocks = Blocks;
+	DataAsset->Modules = Modules;
 
 	// Mark the package dirty and save it
 	FAssetRegistryModule::AssetCreated(DataAsset);
@@ -171,7 +171,7 @@ bool WFC_Utility::SaveData(const FString& AssetPath, const TArray<FWFC_Block>& B
 
 }
 
-bool WFC_Utility::SaveData(const FString& AssetPath, const FWFC_Block& Block)
+bool WFC_Utility::SaveData(const FString& AssetPath, const FWFC_Module& Module)
 {
 	if (!AssetPath.StartsWith(TEXT("/Game/")))
 	{
@@ -221,14 +221,14 @@ bool WFC_Utility::SaveData(const FString& AssetPath, const FWFC_Block& Block)
 	}
 
 	// Create the data asset instance
-	UWFC_BlockAsset* DataAsset = NewObject<UWFC_BlockAsset>(Package, UWFC_BlockAsset::StaticClass(), *AssetName, RF_Public | RF_Standalone);
+	UWFC_ModuleAsset* DataAsset = NewObject<UWFC_ModuleAsset>(Package, UWFC_ModuleAsset::StaticClass(), *AssetName, RF_Public | RF_Standalone);
 	if (!DataAsset)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Failed to create data asset."));
 		return false;
 	}
 
-	DataAsset->Block = Block;
+	DataAsset->Module = Module;
 
 	// Mark the package dirty and save it
 	FAssetRegistryModule::AssetCreated(DataAsset);
@@ -296,7 +296,7 @@ bool WFC_Utility::CreateSockets(TArray<FString> Tokens, TArray<FWFC_Socket>& Out
 		// Check if the socket is irrelevant to rotation
 		if (Tokens[i].EndsWith(TEXT("i")))
 		{
-			Socket.bIsIrelevantRotation = true;
+			Socket.bIsInvariantRotation = true;
 			Tokens[i].RemoveFromEnd(TEXT("i"));
 		}
 
@@ -307,7 +307,7 @@ bool WFC_Utility::CreateSockets(TArray<FString> Tokens, TArray<FWFC_Socket>& Out
 	return true;
 }
 
-bool WFC_Utility::CreateBlocks(const FString& AssetName, UStaticMesh* Mesh, TArray<FWFC_Block>& OutBlocks)
+bool WFC_Utility::CreateBlocks(const FString& AssetName, UStaticMesh* Mesh, TArray<FWFC_Module>& OutBlocks)
 {
 	if (AssetName.IsEmpty())
 	{
@@ -334,7 +334,7 @@ bool WFC_Utility::CreateBlocks(const FString& AssetName, UStaticMesh* Mesh, TArr
 	}
 
 	// Create the first block
-	FWFC_Block NewBlock = FWFC_Block(Mesh, Sockets);
+	FWFC_Module NewBlock = FWFC_Module(Mesh, Sockets);
 	OutBlocks.Add(NewBlock);
 
 	// Add additional blocks if there are variants
@@ -346,7 +346,7 @@ bool WFC_Utility::CreateBlocks(const FString& AssetName, UStaticMesh* Mesh, TArr
 
 	for (int i = 1; i < Variants; i++)
 	{
-		FWFC_Block RotatedBlock = RotateBlock(NewBlock, (i * 90));
+		FWFC_Module RotatedBlock = RotateBlock(NewBlock, (i * 90));
 		OutBlocks.Add(RotatedBlock);
 
 	}
@@ -355,9 +355,9 @@ bool WFC_Utility::CreateBlocks(const FString& AssetName, UStaticMesh* Mesh, TArr
 }
 
 
-FWFC_Block WFC_Utility::RotateBlock(const FWFC_Block& Block, const int& Rotation)
+FWFC_Module WFC_Utility::RotateBlock(const FWFC_Module& Block, const int& Rotation)
 {
-	FWFC_Block RotatedBlock = Block;
+	FWFC_Module RotatedBlock = Block;
 
 	if (Rotation % 90 != 0)
 	{
@@ -390,12 +390,12 @@ FWFC_Block WFC_Utility::RotateBlock(const FWFC_Block& Block, const int& Rotation
 		RotatedBlock.SocketLeft = Block.SocketFront;
 	}
 
-	if (!RotatedBlock.SocketUp.bIsIrelevantRotation)
+	if (!RotatedBlock.SocketUp.bIsInvariantRotation)
 	{
 		RotatedBlock.SocketUp.Rotation = Rotation;
 	}
 
-	if (!RotatedBlock.SocketDown.bIsIrelevantRotation)
+	if (!RotatedBlock.SocketDown.bIsInvariantRotation)
 	{
 		RotatedBlock.SocketDown.Rotation = Rotation;
 	}

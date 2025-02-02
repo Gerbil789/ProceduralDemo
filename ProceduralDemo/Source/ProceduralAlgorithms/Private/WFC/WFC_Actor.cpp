@@ -25,7 +25,7 @@ void AWFC_Actor::PostEditChangeChainProperty(FPropertyChangedChainEvent& Propert
 	}
 }
 
-void AWFC_Actor::LoadDataset()
+void AWFC_Actor::LoadDataset_Implementation()
 {
 	if(!Dataset)
 	{
@@ -33,13 +33,13 @@ void AWFC_Actor::LoadDataset()
 		return;
 	}
 
-	if (Dataset->Blocks.Num() == 0)
+	if (Dataset->Modules.Num() == 0)
 	{
 		UE_LOG(LogTemp, Error, TEXT("No blocks in data set."));
 		return;
 	}
 
-	AWaveFunctionCollapse::SetBlocks(Dataset->Blocks);
+	AWaveFunctionCollapse::SetModules(Dataset->Modules);
 
 	// Clear the InstancedStaticMeshComponents
 	for (auto& Pair : ISMComponents)
@@ -52,16 +52,27 @@ void AWFC_Actor::LoadDataset()
 	ISMComponents.Empty();
 
 	// Create InstancedStaticMeshComponent for each unique static mesh
-	for (const FWFC_Block& Block : Dataset->Blocks)
+	for (const FWFC_Module& Block : Dataset->Modules)
 	{
 		if (!Block.StaticMesh && !Block.IsEmpty())
 		{
 			UE_LOG(LogTemp, Error, TEXT("Block does not have a valid StaticMesh."));
 			return;
 		}
+
 		if (ISMComponents.Contains(Block.StaticMesh))
 		{
 			continue;	// No need for duplicate ISM components
+		}
+
+		if (!Debug)
+		{
+			// dont render empty blocks & fill blocks
+			FString Name = Block.StaticMesh->GetName();
+			if (Name == "1s_1s_1s_1s_1i_1i_1" || Name == "0s_0s_0s_0s_0i_0i_1")
+			{
+				continue;
+			}
 		}
 
 		FName ComponentName = FName(Block.ToString());
@@ -81,7 +92,7 @@ void AWFC_Actor::LoadDataset()
 		ISMComponents.Add(Block.StaticMesh, ISMComp);
 	}
 
-	UE_LOG(LogTemp, Display, TEXT("Loaded %d blocks."), Dataset->Blocks.Num());
+	UE_LOG(LogTemp, Display, TEXT("Loaded %d blocks."), Dataset->Modules.Num());
 }
 
 void AWFC_Actor::GenerateMesh_Implementation()
@@ -122,12 +133,12 @@ bool AWFC_Actor::RunWFC()
 		int newBlocks = 0;
 		for (auto& Pair : Grid)
 		{
-			const FWFC_Block& Block = Pair.Value;
+			const FWFC_Module& Block = Pair.Value;
 			const FIntVector& Position = Pair.Key;
 
-			if(!Dataset->Blocks.Contains(Block))
+			if(!Dataset->Modules.Contains(Block))
 			{
-				Dataset->Blocks.Add(Block);
+				Dataset->Modules.Add(Block);
 				newBlocks++;
 			}
 		}
@@ -137,7 +148,7 @@ bool AWFC_Actor::RunWFC()
 		}
 	}
 
-	if (Blocks.IsEmpty())
+	if (Modules.IsEmpty())
 	{
 		LoadDataset();
 	}
@@ -167,14 +178,16 @@ bool AWFC_Actor::Render()
 
 	for (auto& Pair : Grid)
 	{
-		const FWFC_Block& Block = Pair.Value;
+		const FWFC_Module& Block = Pair.Value;
 		const FIntVector& Position = Pair.Key;
 
 		UInstancedStaticMeshComponent** ISMCompPtr = ISMComponents.Find(Block.StaticMesh);
 		if (!ISMCompPtr || !(*ISMCompPtr))
 		{
-			UE_LOG(LogTemp, Error, TEXT("Failed to find InstancedStaticMeshComponent for block."));
-			return false;
+			//UE_LOG(LogTemp, Error, TEXT("Failed to find InstancedStaticMeshComponent for block."));
+			//return false;
+
+			continue;
 		}
 
 		UInstancedStaticMeshComponent* ISMComp = *ISMCompPtr;
