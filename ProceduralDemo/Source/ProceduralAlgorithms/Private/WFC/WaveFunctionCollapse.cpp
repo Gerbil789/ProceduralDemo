@@ -236,20 +236,7 @@ bool AWaveFunctionCollapse::FindLowestEntropySlot(FIntVector& OutPosition)
 		return true;
 	}
 
-	// Select module from the lowest entropy slots where the module has the least amount of possibilities
-	const FIntVector* MinPossibilitiesPosition = Algo::MinElement(LowestEntropySlots,
-		[this](const FIntVector& A, const FIntVector& B)
-		{
-			return Wave[GetIndex(A)].Modules.Num() < Wave[GetIndex(B)].Modules.Num();
-		});
-
-	if (!MinPossibilitiesPosition)
-	{
-		UE_LOG(LogTemp, Error, TEXT("WaveFunctionCollapse: FindLowestEntropySlot: No valid slot found"));
-		return false;
-	}
-
-	OutPosition = *MinPossibilitiesPosition;
+	OutPosition = LowestEntropySlots[RandomStream.RandRange(0, LowestEntropySlots.Num() - 1)];
 
 	return true;
 }

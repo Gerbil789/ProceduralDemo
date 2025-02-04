@@ -29,4 +29,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "WFC")
 	bool SaveBlock(const FString& AssetPath, const FWFC_Module& Block);
 
+
+	// Generate collisions
+	//UFUNCTION(BlueprintCallable, Category = "WFC")
+	//bool GenerateCollisions(const TArray<UStaticMesh*>& StaticMeshes);
+
 };

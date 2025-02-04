@@ -1,4 +1,8 @@
 #include "WFC_AssetAction.h"
+#include "Engine/StaticMesh.h"
+#include "PhysicsEngine/BodySetup.h"
+#include "Editor.h"
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "WFC/WFC_Utility.h"
 
 bool UWFC_AssetAction::ProcessStaticMeshes(const TArray<UStaticMesh*>& StaticMeshes, TArray<FWFC_Module>& OutBlocks)
@@ -104,3 +108,34 @@ bool UWFC_AssetAction::SaveBlock(const FString& AssetPath, const FWFC_Module& Bl
 	UE_LOG(LogTemp, Log, TEXT("Saved block to: %s"), *AssetPath);
 	return true;
 }
+//
+//bool UWFC_AssetAction::GenerateCollisions(const TArray<UStaticMesh*>& StaticMeshes)
+//{
+//	bool bSuccess = true;
+//
+//	for (UStaticMesh* StaticMesh : StaticMeshes)
+//	{
+//		if (StaticMesh)
+//		{
+//			// Set the collision complexity to "Use Complex Collision as Simple"
+//
+//			StaticMesh->BodySetup->CollisionTraceFlag = CTF_UseComplexAsSimple;
+//
+//			// Apply changes
+//			StaticMesh->MarkPackageDirty();
+//			StaticMesh->PostEditChange();
+//			StaticMesh->Modify();
+//
+//			// Save the asset
+//			FString PackageName = StaticMesh->GetOutermost()->GetName();
+//			if (!UPackage::SavePackage(StaticMesh->GetOutermost(), StaticMesh, EObjectFlags::RF_Standalone, *FPackageName::LongPackageNameToFilename(PackageName, FPackageName::GetAssetPackageExtension())))
+//			{
+//				bSuccess = false;  // If saving fails, mark as unsuccessful
+//			}
+//		}
+//		else
+//		{
+//			bSuccess = false;  // Null mesh encountered
+//		}
+//	}
+//}

@@ -14,10 +14,8 @@ void AWFC_Actor::PostEditChangeChainProperty(FPropertyChangedChainEvent& Propert
 #if WITH_EDITOR
 	Super::PostEditChangeChainProperty(PropertyChangedEvent);
 #endif
-	// Get the name of the changed property
 	FName PropertyName = (PropertyChangedEvent.Property != nullptr) ? PropertyChangedEvent.Property->GetFName() : NAME_None;
 
-	// Check if the changed property is the "Dataset" property
 	if (PropertyName == GET_MEMBER_NAME_CHECKED(AWFC_Actor, Dataset))
 	{
 		UE_LOG(LogTemp, Log, TEXT("Dataset property changed!"));
@@ -128,7 +126,7 @@ void AWFC_Actor::CleanUpMesh()
 
 bool AWFC_Actor::RunWFC()
 {
-	if (!Grid.IsEmpty())
+	/*if (!Grid.IsEmpty())
 	{
 		int newBlocks = 0;
 		for (auto& Pair : Grid)
@@ -146,7 +144,7 @@ bool AWFC_Actor::RunWFC()
 		{
 			LoadDataset();
 		}
-	}
+	}*/
 
 	if (Modules.IsEmpty())
 	{
