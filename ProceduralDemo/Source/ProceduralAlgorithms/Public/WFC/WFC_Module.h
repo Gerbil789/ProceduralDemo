@@ -57,8 +57,6 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "Block")
 	FWFC_Socket SocketDown;
 
-	bool IsEmpty() const { return StaticMesh == nullptr; }
-
 	bool IsCompatibleWith(const FWFC_Module& NeighborModule, const FIntVector& Direction) const
 	{
 		if (Direction == FIntVector(1, 0, 0))

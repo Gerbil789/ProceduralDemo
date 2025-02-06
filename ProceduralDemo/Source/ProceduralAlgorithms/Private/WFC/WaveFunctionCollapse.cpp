@@ -89,20 +89,13 @@ bool AWaveFunctionCollapse::CollapseSlot(const FIntVector& Position)
 bool AWaveFunctionCollapse::CollapseSlotToModule(const FIntVector& Position, const FWFC_Module& Module)
 {
 	int Index = GetIndex(Position);
-	if (Wave[Index].Modules.IsEmpty())
+	
+	if(!Wave[Index].CollapseToModule(Module))
 	{
-		UE_LOG(LogTemp, Error, TEXT("No modules to collapse to at slot (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		UE_LOG(LogTemp, Error, TEXT("WaveFunctionCollapse: Failed to collapse slot (%d, %d, %d) to module"), Position.X, Position.Y, Position.Z);
 		return false;
 	}
 
-	if (!Wave[Index].Modules.Contains(Module))
-	{
-		UE_LOG(LogTemp, Error, TEXT("Module is not compatible with slot (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
-		return false;
-	}
-
-	Wave[Index].Modules = { Module };
-	Wave[Index].Entropy = 0;
 	Grid.Add(Position, Module);
 	return true;
 }
@@ -206,14 +199,13 @@ void AWaveFunctionCollapse::BuildCompatibilityTable()
 
 bool AWaveFunctionCollapse::FindLowestEntropySlot(FIntVector& OutPosition)
 {
-	int MinEntropy = TNumericLimits<int>::Max();
-	TArray<FIntVector> LowestEntropySlots; // Store all cells with the minimum entropy
+	float MinEntropy = TNumericLimits<int>::Max();
+	TArray<FIntVector> LowestEntropySlots;
 
-	// Find the minimum entropy and collect all cells with that entropy
 	for (int i = 0; i < Wave.Num(); ++i)
 	{
 		const auto& Slot = Wave[i];
-		if (Slot.Entropy == 0) continue; // Skip collapsed cells
+		if (Slot.Entropy == 0.0f) continue; // Skip collapsed cells
 
 		FIntVector Position(i % GridSize.X, (i / GridSize.X) % GridSize.Y, i / (GridSize.X * GridSize.Y));
 

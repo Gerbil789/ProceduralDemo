@@ -70,3 +70,15 @@ bool WFC_ModuleSet::Collapse(FWFC_Module& OutModule, FRandomStream& RandomStream
 	OutModule = ChosenModule;
 	return true;
 }
+
+bool WFC_ModuleSet::CollapseToModule(const FWFC_Module& Module)
+{
+	if (!Modules.Contains(Module))
+	{
+		return false;
+	}
+
+	Modules = { Module };
+	Entropy = 0;
+	return true;
+}

@@ -29,16 +29,54 @@ void AWFC_DemoActor::Start()
 	CleanUpMesh();
 	Grid.Empty();
 
-	if (Modules.IsEmpty())
+	//clear text components
+	for (auto& Pair : TextComponents)
 	{
-		LoadDataset();
+		if (Pair.Value)
+		{
+			Pair.Value->DestroyComponent();
+		}
 	}
+	TextComponents.Empty();
 
 	if(!Initialize())
 	{
 		UE_LOG(LogTemp, Error, TEXT("Failed to initialize"));
 		return;
 	}
+
+	const FVector GridCenter = FVector((GridSize.X - 1) * Offset / 2.0f, (GridSize.Y - 1) * Offset / 2.0f, 0.0f);
+
+	// set text compoents
+	for (int x = 0; x < GridSize.X; x++)
+	{
+		for (int y = 0; y < GridSize.Y; y++)
+		{
+			for (int z = 0; z < GridSize.Z; z++)
+			{
+				FIntVector GridPosition = FIntVector(x, y, z);
+				FVector Position = (FVector)GridPosition * Offset - GridCenter;
+				UTextRenderComponent* TextComponent = NewObject<UTextRenderComponent>(this);
+				TextComponent->SetupAttachment(RootComponent);
+				TextComponent->RegisterComponent();
+				TextComponent->SetRelativeLocation(Position);
+
+				TextComponent->SetWorldSize(50.0f);           // Ensure text is large enough
+				TextComponent->SetHorizontalAlignment(EHTA_Center);
+				TextComponent->SetVerticalAlignment(EVRTA_TextCenter);
+				TextComponent->SetTextRenderColor(FColor::Green);
+
+				int Index = GetIndex(GridPosition);
+				FString Text = FString::Printf(TEXT("%.2f"), Wave[Index].Entropy);
+
+
+				TextComponent->SetText(FText::FromString(Text));
+				TextComponents.Add(GridPosition, TextComponent);
+			}
+		}
+	}
+
+
 	UE_LOG(LogTemp, Log, TEXT("Initialized"));
 }
 
@@ -72,7 +110,6 @@ void AWFC_DemoActor::LoadDataset()
 
 	AWaveFunctionCollapse::SetModules(Dataset->Modules);
 
-	// Clear the InstancedStaticMeshComponents
 	for (auto& Pair : ISMComponents)
 	{
 		if (Pair.Value)
@@ -82,10 +119,9 @@ void AWFC_DemoActor::LoadDataset()
 	}
 	ISMComponents.Empty();
 
-	// Create InstancedStaticMeshComponent for each unique static mesh
 	for (const FWFC_Module& Block : Dataset->Modules)
 	{
-		if (!Block.StaticMesh && !Block.IsEmpty())
+		if (!Block.StaticMesh)
 		{
 			UE_LOG(LogTemp, Error, TEXT("Block does not have a valid StaticMesh."));
 			return;
@@ -142,6 +178,8 @@ void AWFC_DemoActor::CleanUpMesh()
 			Pair.Value->ClearInstances();
 		}
 	}
+
+
 }
 
 bool AWFC_DemoActor::Iterate()
@@ -182,14 +220,34 @@ bool AWFC_DemoActor::Iterate()
 	FRotator Rotation = FRotator(0, Block.Rotation, 0);
 	ISMComp->AddInstance(FTransform(Rotation, Location));
 
+
+	// Update all text components
+
+	for (auto& Pair : TextComponents)
+	{
+		if (Grid.Contains(Pair.Key))
+		{
+			//delete component
+			Pair.Value->DestroyComponent();
+			continue;
+		}
+
+		//update component text to current entropy
+		int Index = GetIndex(Pair.Key);
+		FString Text = FString::Printf(TEXT("%.2f"), Wave[Index].Entropy);
+		Pair.Value->SetText(FText::FromString(Text));
+
+
+	}
+
+
 	return true;
 }
 
 void AWFC_DemoActor::IterateWithDelay()
 {
-	if (!Iterate()) // Call your iteration logic
+	if (!Iterate())
 	{
-		// Stop iterating if the condition is met
 		bIsIterating = false;
 		UE_LOG(LogTemp, Log, TEXT("Finished"));
 		return;
@@ -205,5 +263,3 @@ void AWFC_DemoActor::IterateWithDelay()
 		false // Do not loop
 	);
 }
-
-

@@ -34,10 +34,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "WFC")
 	void Propagate(const FIntVector& Position);
 
-private:
-	void BuildCompatibilityTable();
+protected:
 	int GetIndex(const FIntVector& Position) const;
 
+private:
+	void BuildCompatibilityTable();
 	static const TArray<FIntVector> Directions;
 
 protected:
@@ -56,9 +57,9 @@ protected:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "WFC")
 	int Seed = 7;
 
+	TArray<WFC_ModuleSet> Wave;
 
 private:
 	FRandomStream RandomStream;
-	TArray<WFC_ModuleSet> Wave;
 	TMap<FIntVector, TMap<FWFC_Module, TArray<FWFC_Module>>> CompatibilityTable;
 };

@@ -52,7 +52,7 @@ void AWFC_Actor::LoadDataset_Implementation()
 	// Create InstancedStaticMeshComponent for each unique static mesh
 	for (const FWFC_Module& Block : Dataset->Modules)
 	{
-		if (!Block.StaticMesh && !Block.IsEmpty())
+		if (!Block.StaticMesh)
 		{
 			UE_LOG(LogTemp, Error, TEXT("Block does not have a valid StaticMesh."));
 			return;
@@ -126,26 +126,6 @@ void AWFC_Actor::CleanUpMesh()
 
 bool AWFC_Actor::RunWFC()
 {
-	/*if (!Grid.IsEmpty())
-	{
-		int newBlocks = 0;
-		for (auto& Pair : Grid)
-		{
-			const FWFC_Module& Block = Pair.Value;
-			const FIntVector& Position = Pair.Key;
-
-			if(!Dataset->Modules.Contains(Block))
-			{
-				Dataset->Modules.Add(Block);
-				newBlocks++;
-			}
-		}
-		if (newBlocks > 0)
-		{
-			LoadDataset();
-		}
-	}*/
-
 	if (Modules.IsEmpty())
 	{
 		LoadDataset();
@@ -182,9 +162,6 @@ bool AWFC_Actor::Render()
 		UInstancedStaticMeshComponent** ISMCompPtr = ISMComponents.Find(Block.StaticMesh);
 		if (!ISMCompPtr || !(*ISMCompPtr))
 		{
-			//UE_LOG(LogTemp, Error, TEXT("Failed to find InstancedStaticMeshComponent for block."));
-			//return false;
-
 			continue;
 		}
 

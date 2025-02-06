@@ -24,7 +24,4 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TArray<UTextRenderComponent*> TextComponents;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UTextRenderComponent* NameComponent;
 };

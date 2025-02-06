@@ -12,6 +12,7 @@ public:
 	void CalculateEntropy();
 
 	bool Collapse(FWFC_Module& OutModule, FRandomStream& RandomStream);
+	bool CollapseToModule(const FWFC_Module& Module);
 
 	TArray<FWFC_Module> Modules; 
 	float Entropy = 0.0f;

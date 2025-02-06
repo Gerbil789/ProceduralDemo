@@ -14,16 +14,6 @@ AWFC_ModulePreviewActor::AWFC_ModulePreviewActor()
 	WireframeComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	WireframeComponent->SetupAttachment(RootComponent);
 
-	NameComponent = CreateDefaultSubobject<UTextRenderComponent>(TEXT("NameComponent"));
-	NameComponent->SetupAttachment(RootComponent);
-	NameComponent->SetText(FText());
-	NameComponent->SetHorizontalAlignment(EHTA_Center);
-	NameComponent->SetVerticalAlignment(EVRTA_TextCenter);
-	NameComponent->SetWorldSize(60.0f);
-	NameComponent->SetTextRenderColor(FColor::Red);
-	NameComponent->SetWorldRotation(FRotator(0, 0, 0));
-
-
 	const int TextOffset = 120;
 	const TArray<FVector> TextPositions = {
 		FVector(TextOffset, 0, 0),		// front
@@ -62,22 +52,10 @@ AWFC_ModulePreviewActor::AWFC_ModulePreviewActor()
 
 void AWFC_ModulePreviewActor::Initialize(const FWFC_Module Block, UStaticMesh* WireframeMesh)
 {
-	if (!Block.IsEmpty())
+	if (!Block.StaticMesh)
 	{
-		if (!Block.StaticMesh || !MeshComponent)
-		{
-			UE_LOG(LogTemp, Error, TEXT("StaticMesh or MeshComponent is not initialized properly."));
-			return;
-		}
-
-		MeshComponent->SetStaticMesh(Block.StaticMesh);
-
-		FRotator Rotation = FRotator(0, Block.Rotation, 0);
-		MeshComponent->SetWorldRotation(Rotation);
-	}
-	else
-	{
-		NameComponent->SetText(FText::FromString("Empty"));
+		UE_LOG(LogTemp, Error, TEXT("Block does not have a valid StaticMesh."));
+		return;
 	}
 
 	if (TextComponents.Num() != 6)

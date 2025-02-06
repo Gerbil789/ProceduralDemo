@@ -177,7 +177,7 @@ bool AWFC_WorldManager::LoadDataset()
   // Create InstancedStaticMeshComponent for each unique static mesh
   for (const FWFC_Module& Block : Dataset->Modules)
   {
-    if (!Block.StaticMesh && !Block.IsEmpty())
+    if (!Block.StaticMesh)
     {
       UE_LOG(LogTemp, Error, TEXT("Block does not have a valid StaticMesh."));
       return false;

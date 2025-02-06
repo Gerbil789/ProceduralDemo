@@ -5,7 +5,7 @@
 #include "Components/InstancedStaticMeshComponent.h"
 #include "WFC_DataSet.h"
 #include "WFC/WaveFunctionCollapse.h"
-#include "GameFramework/Actor.h"
+#include "Components/TextRenderComponent.h"
 #include "TimerManager.h"
 #include "WFC_DemoActor.generated.h"
 
@@ -56,6 +56,7 @@ private:
 	bool bIsIterating = false;
 
 	TMap<UStaticMesh*, UInstancedStaticMeshComponent*> ISMComponents = TMap<UStaticMesh*, UInstancedStaticMeshComponent*>();
-	
+
+	TMap<FIntVector, class UTextRenderComponent*> TextComponents = TMap<FIntVector, class UTextRenderComponent*>();
 	
 };
