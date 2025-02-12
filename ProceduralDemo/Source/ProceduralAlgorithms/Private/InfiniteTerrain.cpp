@@ -1,11 +1,6 @@
 #include "InfiniteTerrain.h"
 
 
-AInfiniteTerrain::AInfiniteTerrain()
-{
-	PrimaryActorTick.bCanEverTick = true;
-}
-
 void AInfiniteTerrain::BeginPlay()
 {
 	Super::BeginPlay();
@@ -47,6 +42,7 @@ void AInfiniteTerrain::UpdateChunks()
   }
 
   ClearFarChunks();
+  OnChunkGenerated();
 }
 
 void AInfiniteTerrain::ClearFarChunks()

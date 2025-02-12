@@ -65,8 +65,3 @@ int32 AProceduralTerrain::GenerateChunk(int32 ChunkX, int32 ChunkY)
 
 	return SectionIndex;
 }
-
-void AProceduralTerrain::ClearAllChunks()
-{
-	Mesh->ClearAllMeshSections();
-}

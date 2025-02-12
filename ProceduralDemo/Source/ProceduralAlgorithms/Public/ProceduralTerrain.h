@@ -14,14 +14,14 @@ public:
 	AProceduralTerrain();
 
 protected:
-  UPROPERTY(VisibleAnywhere)
+  UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
   UProceduralMeshComponent* Mesh;
 
   UPROPERTY(EditAnywhere, Category = "Terrain")
   UMaterialInterface* TerrainMaterial;
 
   UPROPERTY(EditAnywhere, Category = "Terrain")
-  int32 ChunkSize = 100; // Number of vertices in a chunk
+  int32 ChunkSize = 64; // Number of vertices in a chunk
 
   UPROPERTY(EditAnywhere, Category = "Terrain")
   int QuadSize = 100;
@@ -30,11 +30,8 @@ protected:
   int32 GenerateChunk(int32 ChunkX, int32 ChunkY);
 private:
   UPROPERTY(EditAnywhere, Category = "Terrain")
-  float Frequency = 0.005f;   // Lower values = bigger hills
+  float Frequency = 0.0005f;
 
   UPROPERTY(EditAnywhere, Category = "Terrain")
-  float Amplitude = 500.0f;   // Height of hills
-
-  UFUNCTION(BlueprintCallable, CallInEditor, Category = "Terrain")
-  void ClearAllChunks();
+  float Amplitude = 450.0f;
 };
