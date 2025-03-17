@@ -8,43 +8,58 @@ ATerrainChunkActor::ATerrainChunkActor()
 	RootComponent = MeshComponent;
 }
 
-
-
-void ATerrainChunkActor::GenerateMesh(int X, int Y, AInfiniteTerrain* InfiniteTerrain)
+void ATerrainChunkActor::GenerateMesh(FIntPoint ChunkCoordinates, AInfiniteTerrain* Terrain)
 {
-	SetActorLocation(FVector(X * InfiniteTerrain->ChunkSize, Y * InfiniteTerrain->ChunkSize, 0));
+ 
+  // Step 1: Prepare HeightMap
+  TArray<float> HeightMap;
+  HeightMap.SetNum((Terrain->ChunkSize + 1) * (Terrain->ChunkSize + 1));
 
+  // Step 2: Initialize HeightMap with zeros
+  for (int i = 0; i < HeightMap.Num(); i++)
+  {
+    HeightMap[i] = 0.0f;
+  }
+
+  // Step 3: Apply all modifiers
+  Terrain->ApplyModifiers(ChunkCoordinates, HeightMap);
+
+  // Step 4: Convert HeightMap into procedural mesh data
   TArray<FVector> Vertices;
   TArray<int32> Triangles;
   TArray<FVector2D> UVs;
   TArray<FVector> Normals;
   TArray<FProcMeshTangent> Tangents;
 
-  for (int y = 0; y <= InfiniteTerrain->ChunkSize; y++)
+  for (int y = 0; y <= Terrain->ChunkSize; y++)
   {
-    for (int x = 0; x <= InfiniteTerrain->ChunkSize; x++)
+    for (int x = 0; x <= Terrain->ChunkSize; x++)
     {
-			float Height = InfiniteTerrain->CalculateHeight(x, y);
-      Vertices.Add(FVector(x, y, Height));
+      int Index = x + y * (Terrain->ChunkSize + 1);
+      float Height = HeightMap[Index];
 
-      UVs.Add(FVector2D(x / (float)InfiniteTerrain->ChunkSize, y / (float)InfiniteTerrain->ChunkSize));
+      Vertices.Add(FVector(x * Terrain->QuadSize, y * Terrain->QuadSize, Height));
+      UVs.Add(FVector2D(x / (float)Terrain->ChunkSize, y / (float)Terrain->ChunkSize));
 
-      if (x < InfiniteTerrain->ChunkSize && y < InfiniteTerrain->ChunkSize)
+      if (x < Terrain->ChunkSize && y < Terrain->ChunkSize)
       {
-        int i = x + y * (InfiniteTerrain->ChunkSize + 1);
+        int i = x + y * (Terrain->ChunkSize + 1);
         Triangles.Add(i);
-        Triangles.Add(i + InfiniteTerrain->ChunkSize + 1);
+        Triangles.Add(i + Terrain->ChunkSize + 1);
         Triangles.Add(i + 1);
 
         Triangles.Add(i + 1);
-        Triangles.Add(i + InfiniteTerrain->ChunkSize + 1);
-        Triangles.Add(i + InfiniteTerrain->ChunkSize + 2);
+        Triangles.Add(i + Terrain->ChunkSize + 1);
+        Triangles.Add(i + Terrain->ChunkSize + 2);
       }
     }
   }
 
   MeshComponent->CreateMeshSection(0, Vertices, Triangles, Normals, UVs, TArray<FColor>(), Tangents, true);
+  MeshComponent->SetMaterial(0, Terrain->TerrainMaterial);
+
 }
+
 
 
 

@@ -16,7 +16,7 @@ class PROCEDURALALGORITHMS_API ATerrainChunkActor : public AActor
 public:	
 	ATerrainChunkActor();
 
-	void GenerateMesh(int X, int Y, AInfiniteTerrain* TerrainManager);
+	void GenerateMesh(FIntPoint ChunkCoordinates, AInfiniteTerrain* TerrainManager);
 
 private:	
 	UProceduralMeshComponent* MeshComponent;

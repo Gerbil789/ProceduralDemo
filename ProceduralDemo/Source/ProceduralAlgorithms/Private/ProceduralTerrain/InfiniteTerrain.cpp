@@ -12,8 +12,7 @@ void AInfiniteTerrain::BeginPlay()
 {
 	Super::BeginPlay();
 	PlayerPawn = GetWorld()->GetFirstPlayerController()->GetPawn();
-  LastChunkLocation = GetChunkCoordinates(PlayerPawn->GetActorLocation());
-
+  LastChunkLocation = GetChunkCoordinates(FVector2D(PlayerPawn->GetActorLocation()));
 
   /*if (TerrainMaterial)
   {
@@ -27,13 +26,14 @@ void AInfiniteTerrain::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-  FVector CurrentPlayerLocation = PlayerPawn->GetActorLocation();
-	FIntPoint PlayerChunkLocation = GetChunkCoordinates(CurrentPlayerLocation);
+	FIntPoint PlayerChunkLocation = GetChunkCoordinates(FVector2D(PlayerPawn->GetActorLocation()));
 
   if (PlayerChunkLocation != LastChunkLocation)
   {
 		LastChunkLocation = PlayerChunkLocation;
     UpdateChunks();
+    ClearFarChunks();
+		OnChunkGenerated(); // Notify Blueprints
   }
 }
 
@@ -47,70 +47,114 @@ void AInfiniteTerrain::UpdateChunks()
 
       if (LoadedChunks.Contains(ChunkCoordinates)) continue;
 
-			FVector Location = GetWorldCoordinates(ChunkCoordinates);
-      DrawDebugBox(GetWorld(), Location, FVector(50, 50, 50), FColor::Red, false, 0.0f);
-      ATerrainChunkActor* Chunk = GetWorld()->SpawnActor<ATerrainChunkActor>(ATerrainChunkActor::StaticClass());
-      //Chunk->SetActorLocation(GetWorldCoordinates(ChunkCoordinates));
+			FVector SpawnLocation = FVector(GetWorldCoordinates(ChunkCoordinates), 0.0f);
+			FRotator SpawnRotation = FRotator::ZeroRotator;
+      USceneComponent* ParentRootComponent = GetRootComponent();
 
+      FActorSpawnParameters SpawnParams;
+      SpawnParams.Owner = this;
+      SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+
+      ATerrainChunkActor* Chunk = GetWorld()->SpawnActor<ATerrainChunkActor>(ATerrainChunkActor::StaticClass(), SpawnLocation, SpawnRotation, SpawnParams);
+
+			if (Chunk == nullptr)
+			{
+				UE_LOG(LogTemp, Error, TEXT("Failed to spawn chunk at %s"), *SpawnLocation.ToString());
+				continue;
+			}
+
+      Chunk->AttachToComponent(ParentRootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+
+			UE_LOG(LogTemp, Warning, TEXT("Chunk spawned at: %s"), *SpawnLocation.ToString());
 
       LoadedChunks.Add(ChunkCoordinates, Chunk);
-      Chunk->GenerateMesh(ChunkCoordinates.X, ChunkCoordinates.Y, this);
-      //GenerateChunkAsync(ChunkCoordinates);
+      Chunk->GenerateMesh(ChunkCoordinates, this);
     }
   }
-
-  ClearFarChunks();
-  OnChunkGenerated();
 }
 
 void AInfiniteTerrain::ClearFarChunks()
 {
- /* TSet<FIntPoint> ChunksToRemove;
+  TSet<FIntPoint> ChunksToRemove;
 
-  for (int32 y = -ChunkDistance; y <= ChunkDistance; y++)
-  {
-    for (int32 x = -ChunkDistance; x <= ChunkDistance; x++)
-    {
-			FIntPoint Chunk = FIntPoint(PlayerChunk.X + x, PlayerChunk.Y + y);
-			if (!LoadedChunks.Contains(Chunk))
-			{
-				continue;
-			}
-
-			if (FMath::Abs(Chunk.X - PlayerChunk.X) > ChunkDistance || FMath::Abs(Chunk.Y - PlayerChunk.Y) > ChunkDistance)
-      {
-				ChunksToRemove.Add(Chunk);
-      }
-      
-    }
-  }
-
-	for (FIntPoint Chunk : ChunksToRemove)
+	for (auto& Chunk : LoadedChunks)
 	{
-		int32 ChunkId = GetChunkId(Chunk);
-    Mesh->ClearMeshSection(ChunkId);
-		LoadedChunks.Remove(ChunkId);
-	}*/
+		FIntPoint ChunkCoordinates = Chunk.Key;
+
+		//if chunk is over the cleanup radius, remove it
+		int AbsX = FMath::Abs(ChunkCoordinates.X - LastChunkLocation.X);
+		int AbsY = FMath::Abs(ChunkCoordinates.Y - LastChunkLocation.Y);
+
+		if (AbsX > CleanupRadius || AbsY > CleanupRadius)
+		{
+			ChunksToRemove.Add(ChunkCoordinates);
+		}
+	}
+
+	for (FIntPoint ChunkCoordinates : ChunksToRemove)
+	{
+		LoadedChunks[ChunkCoordinates]->Destroy();
+		LoadedChunks.Remove(ChunkCoordinates);
+
+		UE_LOG(LogTemp, Warning, TEXT("Chunk removed at: %s"), *ChunkCoordinates.ToString());
+	}
 }
 
-float AInfiniteTerrain::CalculateHeight(float x, float y)
+//float AInfiniteTerrain::CalculateHeight(FIntPoint ChunkCoordinates, float X, float Y)
+//{
+//	FVector2D WorldLocation = GetWorldCoordinates(ChunkCoordinates);
+//	WorldLocation.X += X * QuadSize;
+//	WorldLocation.Y += Y * QuadSize;
+//
+//	float Height = 0.0f;
+//
+//	for (UTerrainModifier* Modifier : Modifiers)
+//	{
+//		if (Modifier && Modifier->bEnabled)
+//		{
+//			float ModValue = Modifier->GetHeight(WorldLocation);
+//
+//			Height += Modifier->GetHeight(WorldLocation);
+//
+//			if (Modifier->ModifierType == ETerrainModifierType::Additive)
+//			{
+//				Height += ModValue;
+//			}
+//			else if (Modifier->ModifierType == ETerrainModifierType::Multiplicative)
+//			{
+//				Height *= ModValue;
+//			}
+//		}
+//	}
+//
+//	return Height;
+//}
+
+void AInfiniteTerrain::ApplyModifiers(FIntPoint ChunkCoordinates, TArray<float>& HeightMap)
 {
-  return 0.0f;
+	FVector2D ChunkWorldPosition = FVector2D(ChunkCoordinates.X * ChunkSize, ChunkCoordinates.Y * ChunkSize);
+
+	for (UTerrainModifier* Modifier : Modifiers)
+	{
+		if (!Modifier) continue;
+		Modifier->ApplyModifier(HeightMap, ChunkSize, ChunkWorldPosition);
+	}
 }
 
-FIntPoint AInfiniteTerrain::GetChunkCoordinates(FVector WorldLocation)
+FIntPoint AInfiniteTerrain::GetChunkCoordinates(FVector2D WorldLocation)
 {
-	int32 ChunkX = FMath::RoundToInt(WorldLocation.X / ((ChunkSize - 1) * QuadSize));
-	int32 ChunkY = FMath::RoundToInt(WorldLocation.Y / ((ChunkSize - 1) * QuadSize));
+	int32 ChunkX = FMath::RoundToInt(WorldLocation.X / (ChunkSize * QuadSize));
+	int32 ChunkY = FMath::RoundToInt(WorldLocation.Y / (ChunkSize * QuadSize));
 	return FIntPoint(ChunkX, ChunkY);
 
 }
 
-FVector AInfiniteTerrain::GetWorldCoordinates(FIntPoint Chunk)
+FVector2D AInfiniteTerrain::GetWorldCoordinates(FIntPoint ChunkCoordinates)
 {
-	float X = Chunk.X * (ChunkSize - 1) * QuadSize;
-	float Y = Chunk.Y * (ChunkSize - 1) * QuadSize;
-	return FVector(X, Y, 0);
+	float X = ChunkCoordinates.X * ChunkSize * QuadSize;
+	float Y = ChunkCoordinates.Y * ChunkSize * QuadSize;
+	return FVector2D(X, Y);
 }
 
 
