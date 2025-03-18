@@ -12,20 +12,20 @@ class PROCEDURALALGORITHMS_API UPerlinNoiseModifier : public UTerrainModifier
 	GENERATED_BODY()
 	
 public:	
-UPROPERTY(EditAnywhere, Category = "Perlin Noise")
+UPROPERTY(EditAnywhere)
 float Scale = 100.0f;
 
-//UPROPERTY(EditAnywhere, Category = "Perlin Noise")
-//float Amplitude = 300.0f;
+UPROPERTY(EditAnywhere)
+UCurveFloat* Curve = nullptr;
 
-UPROPERTY(EditAnywhere, Category = "Perlin Noise")
+UPROPERTY(EditAnywhere)
+float Amplitude = 300.0f;
+
+UPROPERTY(EditAnywhere)
 int32 Seed = 0;
 
-UPROPERTY(EditAnywhere, Category = "Perlin Noise")
+UPROPERTY(EditAnywhere)
 ETerrainModifierType ModifierType = ETerrainModifierType::Additive;
 
-//virtual float GetHeight_Implementation(FVector2D WorldLocation) const override;
-
 virtual void ApplyModifier(TArray<float>& HeightMap, int ChunkSize, FVector2D ChunkCoordinates) const override;
-
 };

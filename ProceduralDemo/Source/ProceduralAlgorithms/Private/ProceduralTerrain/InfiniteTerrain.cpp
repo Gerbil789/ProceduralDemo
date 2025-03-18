@@ -1,7 +1,6 @@
 #include "ProceduralTerrain/InfiniteTerrain.h"
 #include "ProceduralTerrain/TerrainChunkActor.h"
 
-
 AInfiniteTerrain::AInfiniteTerrain()
 {
   PrimaryActorTick.bCanEverTick = true;
@@ -13,12 +12,6 @@ void AInfiniteTerrain::BeginPlay()
 	Super::BeginPlay();
 	PlayerPawn = GetWorld()->GetFirstPlayerController()->GetPawn();
   LastChunkLocation = GetChunkCoordinates(FVector2D(PlayerPawn->GetActorLocation()));
-
-  /*if (TerrainMaterial)
-  {
-    Mesh->SetMaterial(0, TerrainMaterial);
-  }*/
-
 	UpdateChunks(); // Generate initial chunks
 }
 
@@ -55,7 +48,6 @@ void AInfiniteTerrain::UpdateChunks()
       SpawnParams.Owner = this;
       SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
-
       ATerrainChunkActor* Chunk = GetWorld()->SpawnActor<ATerrainChunkActor>(ATerrainChunkActor::StaticClass(), SpawnLocation, SpawnRotation, SpawnParams);
 
 			if (Chunk == nullptr)
@@ -66,10 +58,8 @@ void AInfiniteTerrain::UpdateChunks()
 
       Chunk->AttachToComponent(ParentRootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 
-			UE_LOG(LogTemp, Warning, TEXT("Chunk spawned at: %s"), *SpawnLocation.ToString());
-
       LoadedChunks.Add(ChunkCoordinates, Chunk);
-      Chunk->GenerateMesh(ChunkCoordinates, this);
+      Chunk->GenerateAsync(ChunkCoordinates, this);
     }
   }
 }
@@ -96,40 +86,8 @@ void AInfiniteTerrain::ClearFarChunks()
 	{
 		LoadedChunks[ChunkCoordinates]->Destroy();
 		LoadedChunks.Remove(ChunkCoordinates);
-
-		UE_LOG(LogTemp, Warning, TEXT("Chunk removed at: %s"), *ChunkCoordinates.ToString());
 	}
 }
-
-//float AInfiniteTerrain::CalculateHeight(FIntPoint ChunkCoordinates, float X, float Y)
-//{
-//	FVector2D WorldLocation = GetWorldCoordinates(ChunkCoordinates);
-//	WorldLocation.X += X * QuadSize;
-//	WorldLocation.Y += Y * QuadSize;
-//
-//	float Height = 0.0f;
-//
-//	for (UTerrainModifier* Modifier : Modifiers)
-//	{
-//		if (Modifier && Modifier->bEnabled)
-//		{
-//			float ModValue = Modifier->GetHeight(WorldLocation);
-//
-//			Height += Modifier->GetHeight(WorldLocation);
-//
-//			if (Modifier->ModifierType == ETerrainModifierType::Additive)
-//			{
-//				Height += ModValue;
-//			}
-//			else if (Modifier->ModifierType == ETerrainModifierType::Multiplicative)
-//			{
-//				Height *= ModValue;
-//			}
-//		}
-//	}
-//
-//	return Height;
-//}
 
 void AInfiniteTerrain::ApplyModifiers(FIntPoint ChunkCoordinates, TArray<float>& HeightMap)
 {

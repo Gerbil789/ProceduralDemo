@@ -13,6 +13,6 @@ void UCurveModifier::ApplyModifier(TArray<float>& HeightMap, int ChunkSize, FVec
 		}
 	}
 
-	ApplyChildModifiers(HeightMap, ChunkSize, ChunkCoordinates);
+	//ApplyChildModifiers(HeightMap, ChunkSize, ChunkCoordinates);
 }
 
