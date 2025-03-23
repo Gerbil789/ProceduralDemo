@@ -3,19 +3,20 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "ProceduralTerrain/Modifiers/TerrainModifier.h"
-#include "ClampModifier.generated.h"
+#include "Engine/Texture2D.h"
+#include "TextureModifier.generated.h"
 
 UCLASS(Blueprintable, EditInlineNew)
-class PROCEDURALALGORITHMS_API UClampModifier : public UTerrainModifier
+class PROCEDURALALGORITHMS_API UTextureModifier : public UTerrainModifier
 {
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere)
-	float MinHeight = 0.0f;
+  UPROPERTY(EditAnywhere, BlueprintReadWrite)
+  UTexture2D* Texture;
 
-	UPROPERTY(EditAnywhere)
-	float MaxHeight = 1000.0f;
+  UPROPERTY(EditAnywhere)
+  ETerrainModifierType ModifierType = ETerrainModifierType::Additive;
 
 	virtual void ApplyModifier(TArray<float>& HeightMap, int ChunkSize, FVector2D ChunkCoordinates) const override;
 };

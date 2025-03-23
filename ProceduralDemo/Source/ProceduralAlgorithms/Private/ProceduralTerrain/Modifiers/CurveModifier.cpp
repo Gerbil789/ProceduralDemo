@@ -12,7 +12,5 @@ void UCurveModifier::ApplyModifier(TArray<float>& HeightMap, int ChunkSize, FVec
 			HeightMap[Index] *= Curve->GetFloatValue(HeightMap[Index]);
 		}
 	}
-
-	//ApplyChildModifiers(HeightMap, ChunkSize, ChunkCoordinates);
 }
 

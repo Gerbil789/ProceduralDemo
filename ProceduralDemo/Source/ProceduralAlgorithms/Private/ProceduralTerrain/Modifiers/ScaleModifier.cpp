@@ -12,7 +12,5 @@ void UScaleModifier::ApplyModifier(TArray<float>& HeightMap, int ChunkSize, FVec
 			HeightMap[Index] *= Scale;
 		}
 	}
-
-	//ApplyChildModifiers(HeightMap, ChunkSize, ChunkCoordinates);
 }
 

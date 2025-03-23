@@ -2,17 +2,15 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "ProceduralTerrain/Enums/MeshStrategy.h"
 #include "ProceduralTerrain/Modifiers/TerrainModifier.h"
 #include "InfiniteTerrain.generated.h"
 
 class ATerrainChunkActor; // Forward declaration
 
-UENUM(BlueprintType)
-enum class EMeshOptimization : uint8
-{
-	None			UMETA(DisplayName = "None"),       
-	QuadTrees UMETA(DisplayName = "QuadTrees")
-};
+// Declare the multicast delegate
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTerrainUpdatedDelegate);
+
 
 UCLASS()
 class PROCEDURALALGORITHMS_API AInfiniteTerrain : public AActor
@@ -27,6 +25,10 @@ protected:
 
 public:	
 	virtual void Tick(float DeltaTime) override;
+
+	// Expose the delegate to Blueprint
+	UPROPERTY(BlueprintAssignable, Category = "Terrain")
+	FOnTerrainUpdatedDelegate OnTerrainUpdated;
 
 	UPROPERTY(EditAnywhere, Category = "Terrain")
 	UMaterialInterface* TerrainMaterial;
@@ -44,24 +46,29 @@ public:
 	int32 QuadSize = 500;
 
 	UPROPERTY(EditAnywhere, Category = "Terrain")
-	EMeshOptimization MeshOptimization = EMeshOptimization::None;
+	EMeshStrategy MestStrategy = EMeshStrategy::Default;
 
-	UPROPERTY(EditAnywhere, Category = "Terrain", meta = (EditCondition = "MeshOptimization == EMeshOptimization::QuadTrees"))
-	float HeightTreshold = 10;
+	UPROPERTY(EditAnywhere, Category = "Terrain", meta = (EditCondition = "MestStrategy == EMeshStrategy::QuadTree"))
+	float HeightThreshold = 1.0;
+
+	UPROPERTY(EditAnywhere, Category = "Terrain", meta = (EditCondition = "MestStrategy == EMeshStrategy::VertexClustering"))
+	int DecimationFactor = 4;
+
+	UPROPERTY(EditAnywhere, Category = "Terrain", meta = (EditCondition = "MestStrategy == EMeshStrategy::QuadraticErrorMetrics"))
+	int QEMDecimationThreshold = 1000;
 
 	UPROPERTY(EditAnywhere, Instanced, Category = "Terrain")
 	TArray<UTerrainModifier*> Modifiers;
 
+	UFUNCTION(CallInEditor, Category = "Terrain", meta = (ToolTip = "Preview one chunk"))
+	void Preview();
 
-	//UFUNCTION(BlueprintCallable, Category = "Terrain")
+	UFUNCTION(CallInEditor, Category = "Terrain", meta = (ToolTip = "Delete all terrain"))
+	void CleanUp();
+
+public:
 	void UpdateChunks();
-
-	//UFUNCTION(BlueprintCallable, Category = "Terrain")
 	void ClearFarChunks();
-
-	UFUNCTION(BlueprintImplementableEvent, Category = "Terrain")
-	void OnChunkGenerated(); // Notify Blueprints
-
 	void ApplyModifiers(FIntPoint ChunkCoordinates, TArray<float>& HeightMap);
 
 private:

@@ -13,7 +13,5 @@ void UClampModifier::ApplyModifier(TArray<float>& HeightMap, int ChunkSize, FVec
 
 		}
 	}
-
-	//ApplyChildModifiers(HeightMap, ChunkSize, ChunkCoordinates);
 }
 

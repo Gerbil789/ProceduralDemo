@@ -12,6 +12,7 @@ void AInfiniteTerrain::BeginPlay()
 	Super::BeginPlay();
 	PlayerPawn = GetWorld()->GetFirstPlayerController()->GetPawn();
   LastChunkLocation = GetChunkCoordinates(FVector2D(PlayerPawn->GetActorLocation()));
+	CleanUp(); // Clear all chunks
 	UpdateChunks(); // Generate initial chunks
 }
 
@@ -25,13 +26,46 @@ void AInfiniteTerrain::Tick(float DeltaTime)
   {
 		LastChunkLocation = PlayerChunkLocation;
     UpdateChunks();
-    ClearFarChunks();
-		OnChunkGenerated(); // Notify Blueprints
-  }
+
+	}
+}
+
+void AInfiniteTerrain::Preview()
+{
+	CleanUp();
+	FIntPoint ChunkCoordinates = FIntPoint(0, 0);
+
+	FVector SpawnLocation = FVector(GetWorldCoordinates(ChunkCoordinates), 0.0f);
+	FRotator SpawnRotation = FRotator::ZeroRotator;
+	USceneComponent* ParentRootComponent = GetRootComponent();
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	ATerrainChunkActor* Chunk = GetWorld()->SpawnActor<ATerrainChunkActor>(ATerrainChunkActor::StaticClass(), SpawnLocation, SpawnRotation, SpawnParams);
+	if (Chunk == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to spawn chunk at %s"), *SpawnLocation.ToString());
+		return;
+	}
+	Chunk->AttachToComponent(ParentRootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+	LoadedChunks.Add(ChunkCoordinates, Chunk);
+	Chunk->GenerateAsync(ChunkCoordinates, this);
+}
+
+void AInfiniteTerrain::CleanUp()
+{
+	UE_LOG(LogTemp, Warning, TEXT("CLEAN UP - Destroying %d chunks"), LoadedChunks.Num());
+	for (auto& Chunk : LoadedChunks)
+	{
+		Chunk.Value->Destroy();
+	}
+	LoadedChunks.Empty();
 }
 
 void AInfiniteTerrain::UpdateChunks()
 {
+	TArray<FGraphEventRef> ChunkTasks;
+
   for (int32 y = -RenderRadius; y <= RenderRadius; y++)
   {
     for (int32 x = -RenderRadius; x <= RenderRadius; x++)
@@ -57,11 +91,26 @@ void AInfiniteTerrain::UpdateChunks()
 			}
 
       Chunk->AttachToComponent(ParentRootComponent, FAttachmentTransformRules::KeepRelativeTransform);
-
       LoadedChunks.Add(ChunkCoordinates, Chunk);
-      Chunk->GenerateAsync(ChunkCoordinates, this);
+      //Chunk->GenerateAsync(ChunkCoordinates, this);
+
+			FGraphEventRef ChunkTask = FFunctionGraphTask::CreateAndDispatchWhenReady([this, Chunk, ChunkCoordinates]()
+				{
+					Chunk->GenerateAsync(ChunkCoordinates, this);
+				}, TStatId(), nullptr, ENamedThreads::AnyThread);
+
+			// Add the task to the array to track its completion
+			ChunkTasks.Add(ChunkTask);
     }
   }
+
+	for (FGraphEventRef& Task : ChunkTasks)
+	{
+		Task->Wait();  // Wait for each task to finish
+	}
+
+	OnTerrainUpdated.Broadcast();
+	ClearFarChunks();
 }
 
 void AInfiniteTerrain::ClearFarChunks()
