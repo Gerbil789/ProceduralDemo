@@ -17,11 +17,12 @@ class PROCEDURALALGORITHMS_API ATerrainChunkActor : public AActor
 public:	
 	ATerrainChunkActor();
 
-	void GenerateAsync(FIntPoint ChunkCoordinates, AInfiniteTerrain* TerrainManager);
+	void GenerateMeshDataAsync(FIntPoint ChunkCoordinates, AInfiniteTerrain* TerrainManager, TFunction<void()> OnComplete = []() {});
+
+	void SpawnMesh();
 
 private:	
+	AInfiniteTerrain* Terrain;
+	TSharedPtr<FMeshData> MeshData;
 	UProceduralMeshComponent* MeshComponent;
-
-	//void GenerateMesh(TArray<float>& HeightMap, int ChunkSize, int QuadSize, FMeshData& MeshData);
-	//void GenerateMeshUsingQuadTrees(TArray<float>& HeightMap, int ChunkSize, int QuadSize, float HeightTreshold, FMeshData& MeshData);
 };

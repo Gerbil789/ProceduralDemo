@@ -45,6 +45,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Terrain", meta = (ToolTip = "Size of the quads in the chunk"))
 	int32 QuadSize = 500;
 
+	UPROPERTY(EditAnywhere, Category = "Terrain", meta = (ToolTip = "How many chunks can spawn in one frame"))
+	int32 SpawnLimit = 5;
+
 	UPROPERTY(EditAnywhere, Category = "Terrain")
 	EMeshStrategy MestStrategy = EMeshStrategy::Default;
 
@@ -67,9 +70,13 @@ public:
 	void CleanUp();
 
 public:
+	void ApplyModifiers(FIntPoint ChunkCoordinates, TArray<float>& HeightMap);
+	TQueue<ATerrainChunkActor*> ChunksQueue;
+
+private:
+	void InitializeTerrain();
 	void UpdateChunks();
 	void ClearFarChunks();
-	void ApplyModifiers(FIntPoint ChunkCoordinates, TArray<float>& HeightMap);
 
 private:
 	// Player tracking
@@ -80,4 +87,7 @@ private:
 	TMap<FIntPoint, ATerrainChunkActor*> LoadedChunks;
 	FIntPoint GetChunkCoordinates(FVector2D WorldLocation);
 	FVector2D GetWorldCoordinates(FIntPoint Chunk);
+
+	TArray<FIntPoint> GetChunkCoordinatesInRadius();
+
 };

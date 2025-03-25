@@ -13,66 +13,69 @@ ATerrainChunkActor::ATerrainChunkActor()
 	RootComponent = MeshComponent;
 }
 
-void ATerrainChunkActor::GenerateAsync(FIntPoint ChunkCoordinates, AInfiniteTerrain* Terrain)
+void ATerrainChunkActor::GenerateMeshDataAsync(FIntPoint ChunkCoordinates, AInfiniteTerrain* InfiniteTerrain, TFunction<void()> OnComplete)
 {
-	TSharedRef<FMeshData> MeshData = MakeShared<FMeshData>();
-
+	this->Terrain = InfiniteTerrain;
 	// background thread
-  //Async(EAsyncExecution::ThreadPool, [this, ChunkCoordinates, Terrain, MeshData]()
-  //  {
-  //   
-  //  });
+	Async(EAsyncExecution::ThreadPool, [this, ChunkCoordinates, OnComplete]()
+		{
+			MeshData = MakeShared<FMeshData>();
 
+			// Generate heightmap
+			TArray<float> HeightMap;
+			HeightMap.Init(0.0f, (Terrain->ChunkSize + 1) * (Terrain->ChunkSize + 1));
+			Terrain->ApplyModifiers(ChunkCoordinates, HeightMap);
 
+			// Generate mesh
+			switch (Terrain->MestStrategy)
+			{
+			case EMeshStrategy::Default:
+				DefaultStrategy::GenerateMesh(HeightMap, Terrain->ChunkSize, Terrain->QuadSize, *MeshData);
+				break;
 
-   // Generate heightmap
-  TArray<float> HeightMap;
-  HeightMap.Init(0.0f, (Terrain->ChunkSize + 1) * (Terrain->ChunkSize + 1));
-  Terrain->ApplyModifiers(ChunkCoordinates, HeightMap);
+			case EMeshStrategy::QuadTree:
+				QuadTreeStrategy::GenerateMesh(HeightMap, Terrain->ChunkSize, Terrain->QuadSize, Terrain->HeightThreshold, *MeshData);
+				break;
 
-  // Generate mesh
-  switch (Terrain->MestStrategy)
-  {
-  case EMeshStrategy::Default:
-    DefaultStrategy::GenerateMesh(HeightMap, Terrain->ChunkSize, Terrain->QuadSize, *MeshData);
-    break;
+			case EMeshStrategy::VertexClustering:
+				VertexClusteringStrategy::GenerateMesh(HeightMap, Terrain->ChunkSize, Terrain->QuadSize, Terrain->DecimationFactor, *MeshData);
+				break;
 
-  case EMeshStrategy::QuadTree:
-    QuadTreeStrategy::GenerateMesh(HeightMap, Terrain->ChunkSize, Terrain->QuadSize, Terrain->HeightThreshold, *MeshData);
-    break;
+			case EMeshStrategy::QuadraticErrorMetrics:
+				QuadraticErrorMetricsStrategy::GenerateMesh(HeightMap, Terrain->ChunkSize, Terrain->QuadSize, Terrain->QEMDecimationThreshold, *MeshData);
+				break;
 
-  case EMeshStrategy::VertexClustering:
-    VertexClusteringStrategy::GenerateMesh(HeightMap, Terrain->ChunkSize, Terrain->QuadSize, Terrain->DecimationFactor, *MeshData);
-    break;
+			default:
+				UE_LOG(LogTemp, Warning, TEXT("Invalid mesh optimization strategy -> using default"));
+				DefaultStrategy::GenerateMesh(HeightMap, Terrain->ChunkSize, Terrain->QuadSize, *MeshData);
+				break;
+			}
 
-  case EMeshStrategy::QuadraticErrorMetrics:
-    QuadraticErrorMetricsStrategy::GenerateMesh(HeightMap, Terrain->ChunkSize, Terrain->QuadSize, Terrain->QEMDecimationThreshold, *MeshData);
-    break;
+			Async(EAsyncExecution::TaskGraphMainThread, [OnComplete]()
+				{
+					OnComplete();
+				});
+			
+		});
+}
 
-  default:
-    UE_LOG(LogTemp, Warning, TEXT("Invalid mesh optimization strategy -> using default"));
-    DefaultStrategy::GenerateMesh(HeightMap, Terrain->ChunkSize, Terrain->QuadSize, *MeshData);
-    break;
-  }
+void ATerrainChunkActor::SpawnMesh()
+{
+	if (!MeshData.IsValid())
+	{
+		UE_LOG(LogTemp, Error, TEXT("MeshData is null"));
+		return;
+	}
+	if (!MeshComponent)
+	{
+		UE_LOG(LogTemp, Error, TEXT("MeshComponent is null"));
+		return;
+	}
 
-  UE_LOG(LogTemp, Warning, TEXT("Chunk data generated"));
+	MeshComponent->CreateMeshSection(0, MeshData->Vertices, MeshData->Triangles, MeshData->Normals, MeshData->UVs, TArray<FColor>(), MeshData->Tangents, true);
 
-  // back to game thread
-  Async(EAsyncExecution::TaskGraphMainThread, [this, Terrain, MeshData]()
-    {
-      if (!MeshComponent)
-      {
-        UE_LOG(LogTemp, Error, TEXT("MeshComponent is null"));
-        return;
-      }
-
-      MeshComponent->CreateMeshSection(0, MeshData->Vertices, MeshData->Triangles, MeshData->Normals, MeshData->UVs, TArray<FColor>(), MeshData->Tangents, true);
-
-      if (Terrain->TerrainMaterial)
-      {
-        MeshComponent->SetMaterial(0, Terrain->TerrainMaterial);
-      }
-
-
-    });
+	if (Terrain->TerrainMaterial)
+	{
+		MeshComponent->SetMaterial(0, Terrain->TerrainMaterial);
+	}
 }
