@@ -8,7 +8,6 @@
 
 class AInfiniteTerrain; // Forward declaration
 
-
 UCLASS()
 class PROCEDURALALGORITHMS_API ATerrainChunkActor : public AActor
 {

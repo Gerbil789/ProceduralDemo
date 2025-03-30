@@ -19,4 +19,7 @@ public:
   ETerrainModifierType ModifierType = ETerrainModifierType::Additive;
 
 	virtual void ApplyModifier(TArray<float>& HeightMap, int ChunkSize, FVector2D ChunkCoordinates) const override;
+
+private:
+  FColor* ImageData;
 };

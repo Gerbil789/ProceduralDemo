@@ -1,19 +1,15 @@
 #include "ProceduralTerrain/InfiniteTerrain.h"
 #include "ProceduralTerrain/TerrainChunkActor.h"
+#include "ProceduralTerrain/Modifiers/NoiseModifier.h"
 #include "TimerManager.h"
-
-//TODO: move it into some utils
-void LogTime(FString message)
-{
-	FDateTime Now = FDateTime::Now();
-	FString TimeString = Now.ToString(TEXT("%Y-%m-%d %H:%M:%S:%s"));
-	UE_LOG(LogTemp, Warning, TEXT("[%s] %s"), *TimeString, *message);
-}
 
 AInfiniteTerrain::AInfiniteTerrain()
 {
   PrimaryActorTick.bCanEverTick = true;
-	//RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
+	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
+
+	UNoiseModifier* NoiseModifier = NewObject<UNoiseModifier>();
+	Modifiers.Add(NoiseModifier);
 }
 
 void AInfiniteTerrain::BeginPlay()
@@ -38,6 +34,9 @@ void AInfiniteTerrain::Tick(float DeltaTime)
     UpdateChunks();
 	}
 
+	time += DeltaTime;
+	if (time < 0.1) return;
+
 	for(int i = 0; i < SpawnLimit; i++)
 	{
 		if (ChunksQueue.IsEmpty()) return;
@@ -49,46 +48,71 @@ void AInfiniteTerrain::Tick(float DeltaTime)
 			Chunk->SpawnMesh();
 		}
 	}
+	time = 0;
 }
 
 void AInfiniteTerrain::Preview()
 {
-	CleanUp();
-	FIntPoint Coordinates = FIntPoint(0, 0);
-	FTransform SpawnTransform = FTransform(FRotator::ZeroRotator, FVector(GetWorldCoordinates(Coordinates), 0.0f));
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = this;
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-	ATerrainChunkActor* Chunk = GetWorld()->SpawnActor<ATerrainChunkActor>(ATerrainChunkActor::StaticClass(), SpawnTransform, SpawnParams);
-	if (Chunk == nullptr)
+	if (GetWorld() && GetWorld()->IsGameWorld())
 	{
-		UE_LOG(LogTemp, Error, TEXT("Failed to spawn chunk at %s"), *SpawnTransform.GetLocation().ToString());
+		UE_LOG(LogTemp, Warning, TEXT("Preview is disabled while the game is running."));
 		return;
 	}
-	Chunk->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
-	LoadedChunks.Add(Coordinates, Chunk);
 
-	Chunk->GenerateMeshDataAsync(Coordinates, this, [this, Chunk]()
+	CleanUp();
+	TArray<FIntPoint> ChunkCoordinatesInRadius = GetChunkCoordinatesInRadius(PreviewRadius);
+
+	for (const FIntPoint& Coordinates : ChunkCoordinatesInRadius)
+	{
+		FTransform SpawnTransform = FTransform(FRotator::ZeroRotator, FVector(GetWorldCoordinates(Coordinates), 0.0f));
+
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = this;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+		ATerrainChunkActor* Chunk = GetWorld()->SpawnActor<ATerrainChunkActor>(ATerrainChunkActor::StaticClass(), SpawnTransform, SpawnParams);
+		if (Chunk == nullptr)
 		{
-			Chunk->SpawnMesh();
-		});
+			UE_LOG(LogTemp, Error, TEXT("Failed to spawn chunk at %s"), *SpawnTransform.GetLocation().ToString());
+			continue;
+		}
+
+		//Chunk->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
+		Chunk->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+		LoadedChunks.Add(Coordinates, Chunk);
+
+		Chunk->GenerateMeshDataAsync(Coordinates, this, [this, Chunk]()
+			{
+				Chunk->SpawnMesh();
+			});
+	}
+	ChunksQueue.Empty();
 }
 
 void AInfiniteTerrain::CleanUp()
 {
 	UE_LOG(LogTemp, Warning, TEXT("CLEAN UP - Destroying %d chunks"), LoadedChunks.Num());
+
 	for (auto& Chunk : LoadedChunks)
 	{
 		Chunk.Value->Destroy();
 	}
 	LoadedChunks.Empty();
+
+	//delete all child actors
+	TArray<AActor*> ChildActors;
+	GetAttachedActors(ChildActors);
+
+	for (AActor* Actor : ChildActors)
+	{
+		Actor->Destroy();
+	}
 }
 
 
 void AInfiniteTerrain::InitializeTerrain()
 {
-	FGraphEventArray Tasks;
-	TArray<FIntPoint> ChunkCoordinatesInRenderRadius = GetChunkCoordinatesInRadius();
+	TArray<FIntPoint> ChunkCoordinatesInRenderRadius = GetChunkCoordinatesInRadius(RenderRadius);
 
 	for (FIntPoint& Coordinates : ChunkCoordinatesInRenderRadius)
 	{
@@ -105,7 +129,7 @@ void AInfiniteTerrain::InitializeTerrain()
 			return;
 		}
 
-		Chunk->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
+		Chunk->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 		LoadedChunks.Add(Coordinates, Chunk);
 
 		Chunk->GenerateMeshDataAsync(Coordinates, this, [this, Chunk]()
@@ -113,11 +137,12 @@ void AInfiniteTerrain::InitializeTerrain()
 				Chunk->SpawnMesh();
 			});
 	}
+	ChunksQueue.Empty();
 }
 
 void AInfiniteTerrain::UpdateChunks()
 {
-	TArray<FIntPoint> ChunkCoordinatesInRenderRadius = GetChunkCoordinatesInRadius();
+	TArray<FIntPoint> ChunkCoordinatesInRenderRadius = GetChunkCoordinatesInRadius(RenderRadius);
 
 	for (const FIntPoint& Coordinates : ChunkCoordinatesInRenderRadius)
 	{
@@ -138,10 +163,7 @@ void AInfiniteTerrain::UpdateChunks()
 		Chunk->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
 		LoadedChunks.Add(Coordinates, Chunk);
 
-		Chunk->GenerateMeshDataAsync(Coordinates, this, [this, Chunk]()
-			{
-				ChunksQueue.Enqueue(Chunk);
-			});
+		Chunk->GenerateMeshDataAsync(Coordinates, this);
 	}
 
 	//OnTerrainUpdated.Broadcast();
@@ -199,18 +221,15 @@ FVector2D AInfiniteTerrain::GetWorldCoordinates(FIntPoint ChunkCoordinates)
 	return FVector2D(X, Y);
 }
 
-TArray<FIntPoint> AInfiniteTerrain::GetChunkCoordinatesInRadius()
+TArray<FIntPoint> AInfiniteTerrain::GetChunkCoordinatesInRadius(int Radius)
 {
 	TArray<FIntPoint> Coordinates;
-	for (int32 y = -RenderRadius; y <= RenderRadius; y++)
+	for (int32 y = -Radius; y <= Radius; y++)
 	{
-		for (int32 x = -RenderRadius; x <= RenderRadius; x++)
+		for (int32 x = -Radius; x <= Radius; x++)
 		{
 			Coordinates.Add(FIntPoint(LastChunkLocation.X + x, LastChunkLocation.Y + y));
 		}
 	}
 	return Coordinates;
 }
-
-
-

@@ -51,6 +51,10 @@ void ATerrainChunkActor::GenerateMeshDataAsync(FIntPoint ChunkCoordinates, AInfi
 				break;
 			}
 
+			// TQueue is thread-safe, we can safely add the chunk to the queue
+			Terrain->ChunksQueue.Enqueue(this);
+
+			// callback on main thread
 			Async(EAsyncExecution::TaskGraphMainThread, [OnComplete]()
 				{
 					OnComplete();

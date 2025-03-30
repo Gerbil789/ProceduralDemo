@@ -30,43 +30,46 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Terrain")
 	FOnTerrainUpdatedDelegate OnTerrainUpdated;
 
-	UPROPERTY(EditAnywhere, Category = "Terrain")
+	UPROPERTY(EditAnywhere, Category = "Terrain | Settings")
 	UMaterialInterface* TerrainMaterial;
 
-	UPROPERTY(EditAnywhere, Category = "Terrain")
-	int32 RenderRadius = 15;
+	UPROPERTY(EditAnywhere, Category = "Terrain | Settings")
+	int32 RenderRadius = 16;
 
-	UPROPERTY(EditAnywhere, Category = "Terrain")
-	int32 CleanupRadius = 16;
+	UPROPERTY(EditAnywhere, Category = "Terrain | Settings")
+	int32 CleanupRadius = 32;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Terrain", meta = (ToolTip = "How many quads in a chunk"))
-	int ChunkSize = 10;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Terrain | Settings", meta = (ToolTip = "How many quads in a chunk"))
+	int ChunkSize = 16;
 
-	UPROPERTY(EditAnywhere, Category = "Terrain", meta = (ToolTip = "Size of the quads in the chunk"))
+	UPROPERTY(EditAnywhere, Category = "Terrain | Settings", meta = (ToolTip = "Size of the quads in the chunk"))
 	int32 QuadSize = 500;
 
-	UPROPERTY(EditAnywhere, Category = "Terrain", meta = (ToolTip = "How many chunks can spawn in one frame"))
+	UPROPERTY(EditAnywhere, Category = "Terrain | Settings", meta = (ToolTip = "How many chunks can spawn in one frame"))
 	int32 SpawnLimit = 5;
 
-	UPROPERTY(EditAnywhere, Category = "Terrain")
+	UPROPERTY(EditAnywhere, Category = "Terrain | Settings")
 	EMeshStrategy MestStrategy = EMeshStrategy::Default;
 
-	UPROPERTY(EditAnywhere, Category = "Terrain", meta = (EditCondition = "MestStrategy == EMeshStrategy::QuadTree"))
+	UPROPERTY(EditAnywhere, Category = "Terrain | Settings", meta = (EditCondition = "MestStrategy == EMeshStrategy::QuadTree"))
 	float HeightThreshold = 1.0;
 
-	UPROPERTY(EditAnywhere, Category = "Terrain", meta = (EditCondition = "MestStrategy == EMeshStrategy::VertexClustering"))
+	UPROPERTY(EditAnywhere, Category = "Terrain | Settings", meta = (EditCondition = "MestStrategy == EMeshStrategy::VertexClustering"))
 	int DecimationFactor = 4;
 
-	UPROPERTY(EditAnywhere, Category = "Terrain", meta = (EditCondition = "MestStrategy == EMeshStrategy::QuadraticErrorMetrics"))
+	UPROPERTY(EditAnywhere, Category = "Terrain | Settings", meta = (EditCondition = "MestStrategy == EMeshStrategy::QuadraticErrorMetrics"))
 	int QEMDecimationThreshold = 1000;
 
-	UPROPERTY(EditAnywhere, Instanced, Category = "Terrain")
+	UPROPERTY(EditAnywhere, Category = "Terrain | Settings | Preview")
+	int PreviewRadius = 5;
+
+	UPROPERTY(EditAnywhere, Instanced, Category = "Terrain|Modifiers")
 	TArray<UTerrainModifier*> Modifiers;
 
-	UFUNCTION(CallInEditor, Category = "Terrain", meta = (ToolTip = "Preview one chunk"))
+	UFUNCTION(CallInEditor, meta = (ToolTip = "Preview one chunk"))
 	void Preview();
 
-	UFUNCTION(CallInEditor, Category = "Terrain", meta = (ToolTip = "Delete all terrain"))
+	UFUNCTION(CallInEditor, meta = (ToolTip = "Delete all terrain"))
 	void CleanUp();
 
 public:
@@ -88,6 +91,8 @@ private:
 	FIntPoint GetChunkCoordinates(FVector2D WorldLocation);
 	FVector2D GetWorldCoordinates(FIntPoint Chunk);
 
-	TArray<FIntPoint> GetChunkCoordinatesInRadius();
+	TArray<FIntPoint> GetChunkCoordinatesInRadius(int Radius);
+
+	float time = 0;
 
 };
