@@ -15,13 +15,29 @@ class PROCEDURALALGORITHMS_API ATerrainChunkActor : public AActor
 	
 public:	
 	ATerrainChunkActor();
+	void GenerateLODsAsync(FIntPoint ChunkCoordinates, AInfiniteTerrain* InfiniteTerrain, TFunction<void()> OnComplete = []() {});
 
-	void GenerateMeshDataAsync(FIntPoint ChunkCoordinates, AInfiniteTerrain* TerrainManager, TFunction<void()> OnComplete = []() {});
+	void UpdateLODLevel(int32 NewLODLevel);
 
-	void SpawnMesh();
+	// Get current LOD level
+	int32 GetCurrentLODLevel() const { return CurrentLODLevel; }
 
+
+	//void GenerateMeshDataAsync(FIntPoint ChunkCoordinates, AInfiniteTerrain* TerrainManager, TFunction<void()> OnComplete = []() {});
+
+	//void SpawnMesh();
+	FIntPoint Coordinates;
 private:	
 	AInfiniteTerrain* Terrain;
-	TSharedPtr<FMeshData> MeshData;
+	/*TSharedPtr<FMeshData> MeshData;*/
 	UProceduralMeshComponent* MeshComponent;
+
+
+	TMap<int, TSharedPtr<FMeshData>> LODMeshData;
+
+	// Current active LOD level
+	int32 CurrentLODLevel;
+
+	// Generate mesh data for a specific LOD level
+	void GenerateLODMeshData(int32 LODLevel);
 };
