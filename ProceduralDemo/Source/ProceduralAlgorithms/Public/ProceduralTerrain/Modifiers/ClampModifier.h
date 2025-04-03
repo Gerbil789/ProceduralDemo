@@ -17,5 +17,8 @@ public:
 	UPROPERTY(EditAnywhere)
 	float MaxHeight = 1000.0f;
 
-	virtual void ApplyModifier(TArray<float>& HeightMap, int ChunkSize, FVector2D ChunkCoordinates) const override;
+	virtual void ApplyModifier(float& Height, const FVector2D& Location) const override
+	{
+		Height = FMath::Clamp(Height, MinHeight, MaxHeight);
+	}
 };

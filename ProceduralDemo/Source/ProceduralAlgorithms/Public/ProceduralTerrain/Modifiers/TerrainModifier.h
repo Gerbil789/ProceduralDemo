@@ -17,5 +17,5 @@ class PROCEDURALALGORITHMS_API UTerrainModifier : public UObject
 	GENERATED_BODY()
 	
 public:	
-	virtual void ApplyModifier(TArray<float>& HeightMap, int ChunkSize, FVector2D ChunkCoordinates) const {}
+	virtual void ApplyModifier(float& Height, const FVector2D& Location) const {}
 };

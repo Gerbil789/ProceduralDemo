@@ -36,19 +36,17 @@ public:
 	UPROPERTY(EditAnywhere)
 	float Gain = 0.5f;
 
-	//UPROPERTY(EditAnywhere)
-	//EFastNoise_CellularDistanceFunction CellularDistanceFunction = EFastNoise_CellularDistanceFunction::Euclidean;
+	UPROPERTY(EditAnywhere)
+	float CellularJitter = 0.45f;
 
-	//UPROPERTY(EditAnywhere)
-	//EFastNoise_CellularReturnType CellularReturnType = EFastNoise_CellularReturnType::CellValue;
+	UPROPERTY(EditAnywhere)
+	EFastNoise_CellularDistanceFunction CellularDistanceFunction = EFastNoise_CellularDistanceFunction::Euclidean;
 
-
-
+	UPROPERTY(EditAnywhere)
+	EFastNoise_CellularReturnType CellularReturnType = EFastNoise_CellularReturnType::CellValue;
 
 	UPROPERTY(EditAnywhere)
 	ETerrainModifierType ModifierType = ETerrainModifierType::Additive;
 
-
-	
-	virtual void ApplyModifier(TArray<float>& HeightMap, int ChunkSize, FVector2D ChunkCoordinates) const override;
+	virtual void ApplyModifier(float& Height, const FVector2D& Location) const override;
 };

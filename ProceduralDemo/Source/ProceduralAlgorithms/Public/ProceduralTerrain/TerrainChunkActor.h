@@ -19,25 +19,15 @@ public:
 
 	void UpdateLODLevel(int32 NewLODLevel);
 
-	// Get current LOD level
 	int32 GetCurrentLODLevel() const { return CurrentLODLevel; }
 
-
-	//void GenerateMeshDataAsync(FIntPoint ChunkCoordinates, AInfiniteTerrain* TerrainManager, TFunction<void()> OnComplete = []() {});
-
-	//void SpawnMesh();
 	FIntPoint Coordinates;
 private:	
 	AInfiniteTerrain* Terrain;
-	/*TSharedPtr<FMeshData> MeshData;*/
+	TMap<int, TSharedPtr<FMeshData>> LODMeshData;
 	UProceduralMeshComponent* MeshComponent;
 
-
-	TMap<int, TSharedPtr<FMeshData>> LODMeshData;
-
-	// Current active LOD level
 	int32 CurrentLODLevel;
 
-	// Generate mesh data for a specific LOD level
 	void GenerateLODMeshData(int32 LODLevel);
 };

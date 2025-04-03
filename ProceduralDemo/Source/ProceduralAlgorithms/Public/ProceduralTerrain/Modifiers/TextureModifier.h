@@ -18,7 +18,7 @@ public:
   UPROPERTY(EditAnywhere)
   ETerrainModifierType ModifierType = ETerrainModifierType::Additive;
 
-	virtual void ApplyModifier(TArray<float>& HeightMap, int ChunkSize, FVector2D ChunkCoordinates) const override;
+	virtual void ApplyModifier(float& Height, const FVector2D& Location) const override;
 
 private:
   FColor* ImageData;

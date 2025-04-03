@@ -51,11 +51,9 @@ void VertexClusteringStrategy::GenerateMesh(const TArray<float>& HeightMap, int 
         MeshData.Triangles.Add(i + NumClustersX);
         MeshData.Triangles.Add(i + 1);
 
-
         MeshData.Triangles.Add(i + 1);
         MeshData.Triangles.Add(i + NumClustersX);
         MeshData.Triangles.Add(i + NumClustersX + 1);
-
       }
     }
   }

@@ -1,9 +1,7 @@
 #include "ProceduralTerrain/Modifiers/NoiseModifier.h"
 
-void UNoiseModifier::ApplyModifier(TArray<float>& HeightMap, int ChunkSize, FVector2D ChunkCoordinates) const
+void UNoiseModifier::ApplyModifier(float& Height, const FVector2D& Location) const
 {
-	if (HeightMap.IsEmpty()) return;
-
 	UFastNoiseWrapper* FastNoise = NewObject<UFastNoiseWrapper>();
 
 	if (!FastNoise)
@@ -12,32 +10,21 @@ void UNoiseModifier::ApplyModifier(TArray<float>& HeightMap, int ChunkSize, FVec
 		return;
 	}
 
-	FastNoise->SetupFastNoise(NoiseType, Seed, Frequency, Interpolation, FractalType, Octaves, Lacunarity, Gain);
+	FastNoise->SetupFastNoise(NoiseType, Seed, Frequency, Interpolation, FractalType, Octaves, Lacunarity, Gain, CellularJitter, CellularDistanceFunction, CellularReturnType);
+	float NoiseValue = FastNoise->GetNoise2D(Location.X, Location.Y);
 
-	for (int y = 0; y <= ChunkSize; y++)
+	switch (ModifierType)
 	{
-		for (int x = 0; x <= ChunkSize; x++)
-		{
-			int HeightMapIndex = x + y * (ChunkSize + 1);
-			float NoiseValue = FastNoise->GetNoise2D(ChunkCoordinates.X + x, ChunkCoordinates.Y + y);
+	case ETerrainModifierType::Additive:
+		Height += NoiseValue;
+		break;
 
+	case ETerrainModifierType::Multiplicative:
+		Height *= NoiseValue;
+		break;
 
-			switch (ModifierType)
-			{
-			case ETerrainModifierType::Additive:
-				HeightMap[HeightMapIndex] += NoiseValue;
-				break;
-
-			case ETerrainModifierType::Multiplicative:
-				HeightMap[HeightMapIndex] *= NoiseValue;
-				break;
-
-			default:
-				UE_LOG(LogTemp, Warning, TEXT("TextureModifier - Unknown ModifierType."));
-				break;
-			}
-		}
+	default:
+		UE_LOG(LogTemp, Warning, TEXT("TextureModifier - Unknown ModifierType."));
+		break;
 	}
-
-
 }

@@ -12,7 +12,10 @@ class PROCEDURALALGORITHMS_API UScaleModifier : public UTerrainModifier
 
 public:
 	UPROPERTY(EditAnywhere)
-	float Scale = 1.0f;
+	float Scale = 500.0f;
 
-	virtual void ApplyModifier(TArray<float>& HeightMap, int ChunkSize, FVector2D ChunkCoordinates) const override;
+	virtual void ApplyModifier(float& Height, const FVector2D& Location) const override
+	{
+		Height *= Scale;
+	}
 };

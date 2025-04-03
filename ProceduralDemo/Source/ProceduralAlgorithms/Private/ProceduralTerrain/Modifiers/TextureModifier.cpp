@@ -4,20 +4,15 @@
 #include "Engine/Texture2D.h"
 #include "Rendering/Texture2DResource.h"
 
-
-void UTextureModifier::ApplyModifier(TArray<float>& HeightMap, int ChunkSize, FVector2D ChunkCoordinates) const
+void UTextureModifier::ApplyModifier(float& height, const FVector2D& Location) const
 {
-  if (HeightMap.IsEmpty())
-  {
-    UE_LOG(LogTemp, Error, TEXT("TextureModifier - Heightmap is empty."));
-    return;
-  }
+  UE_LOG(LogTemp, Warning, TEXT("TextureModifier - NOT IMPLEMENTED."));
 
-  if (!Texture)
-  {
-    UE_LOG(LogTemp, Error, TEXT("TextureModifier - Texture is empty."));
-    return;
-  }
+  //if (!Texture)
+  //{
+  //  UE_LOG(LogTemp, Error, TEXT("TextureModifier - Texture is empty."));
+  //  return;
+  //}
 
   //Texture->
 

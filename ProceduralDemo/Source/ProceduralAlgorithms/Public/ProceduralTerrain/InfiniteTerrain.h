@@ -8,10 +8,7 @@
 
 class ATerrainChunkActor; // Forward declaration
 
-// Declare the multicast delegate
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTerrainUpdatedDelegate);
-
-
 
 UCLASS()
 class PROCEDURALALGORITHMS_API AInfiniteTerrain : public AActor
@@ -67,17 +64,19 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Terrain | Settings")
 	int PreviewRadius = 5;
 
+	UPROPERTY(EditAnywhere, Category = "Terrain | Settings")
+	bool CleanUpOnBeginPlay = false;
+
 	UPROPERTY(EditAnywhere, Instanced, Category = "Terrain | Modifiers")
 	TArray<UTerrainModifier*> Modifiers;
 
-	UFUNCTION(CallInEditor, meta = (ToolTip = "Preview chunks"))
+	UFUNCTION(CallInEditor, Category = "Terrain", meta = (ToolTip = "Preview chunks"))
 	void Preview();
 
-	UFUNCTION(CallInEditor, meta = (ToolTip = "Delete all terrain"))
+	UFUNCTION(CallInEditor, Category = "Terrain", meta = (ToolTip = "Delete all terrain"))
 	void CleanUp();
 
 public:
-	void ApplyModifiers(FIntPoint ChunkCoordinates, int32 Size, TArray<float>& HeightMap);
 	void GenerateHeightmap(FIntPoint ChunkCoordinates, int32 LODLevel, TArray<float>& Heightmap, int32& LODChunkSize, int32& LODQuadSize);
 	TQueue<ATerrainChunkActor*> ChunksQueue;
 
@@ -86,6 +85,12 @@ private:
 	void UpdateChunks();
 	void ClearFarChunks();
 
+	void ApplyModifiers(FIntPoint ChunkCoordinates, int32 Size, TArray<float>& HeightMap);
+	FIntPoint GetChunkCoordinates(FVector2D WorldLocation);
+	FVector2D GetWorldCoordinates(FIntPoint Chunk);
+	TArray<FIntPoint> GetChunkCoordinatesInRadius(int32 Radius);
+	int32 CalculateChunkLODLevel(FIntPoint ChunkCoordinates);
+
 private:
 	// Player tracking
 	APawn* PlayerPawn = nullptr;
@@ -93,13 +98,5 @@ private:
 
 	// Chunk management
 	TMap<FIntPoint, ATerrainChunkActor*> LoadedChunks;
-	FIntPoint GetChunkCoordinates(FVector2D WorldLocation);
-	FVector2D GetWorldCoordinates(FIntPoint Chunk);
-
-	TArray<FIntPoint> GetChunkCoordinatesInRadius(int Radius);
-
-	int32 CalculateChunkLODLevel(FIntPoint ChunkCoordinates);
-
 	float time = 0;
-
 };

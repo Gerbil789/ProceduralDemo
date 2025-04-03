@@ -8,10 +8,11 @@ AInfiniteTerrain::AInfiniteTerrain()
   PrimaryActorTick.bCanEverTick = true;
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
 
-	//set default lod distances
-	LODDistances.Add(3);
+	//set default values
+	LODDistances.Empty();
 	LODDistances.Add(5);
 	LODDistances.Add(10);
+	LODDistances.Add(15);
 
 	UNoiseModifier* NoiseModifier = NewObject<UNoiseModifier>();
 	Modifiers.Add(NoiseModifier);
@@ -23,7 +24,11 @@ void AInfiniteTerrain::BeginPlay()
 	PlayerPawn = GetWorld()->GetFirstPlayerController()->GetPawn();
   LastChunkLocation = GetChunkCoordinates(FVector2D(PlayerPawn->GetActorLocation()));
 
-	CleanUp(); // remove any chunks that might have been spawned in the editor
+	if(CleanUpOnBeginPlay)
+	{
+		CleanUp();
+	}
+
 	InitializeTerrain();
 }
 
@@ -33,12 +38,14 @@ void AInfiniteTerrain::Tick(float DeltaTime)
 
 	FIntPoint PlayerChunkLocation = GetChunkCoordinates(FVector2D(PlayerPawn->GetActorLocation()));
 
+	// if player has moved to a new chunk, update the chunks
   if (PlayerChunkLocation != LastChunkLocation)
   {
 		LastChunkLocation = PlayerChunkLocation;
     UpdateChunks();
 	}
 
+	// update chunks LOD level over time, to avoid spikes
 	time += DeltaTime;
 	if (time < 0.1) return;
 
@@ -51,7 +58,10 @@ void AInfiniteTerrain::Tick(float DeltaTime)
 		if (Chunk)
 		{
 			int32 LODLevel = CalculateChunkLODLevel(Chunk->Coordinates);
-			Chunk->UpdateLODLevel(LODLevel);
+			if (LODLevel != Chunk->GetCurrentLODLevel()) 
+			{
+				Chunk->UpdateLODLevel(LODLevel);
+			}
 		}
 	}
 	time = 0;
@@ -83,14 +93,16 @@ void AInfiniteTerrain::Preview()
 			continue;
 		}
 
-		//Chunk->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
 		Chunk->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 		LoadedChunks.Add(Coordinates, Chunk);
 
 		Chunk->GenerateLODsAsync(Coordinates, this, [this, Chunk]()
 			{
 				int32 LODLevel = CalculateChunkLODLevel(Chunk->Coordinates);
-				Chunk->UpdateLODLevel(LODLevel);
+				if (LODLevel != Chunk->GetCurrentLODLevel())
+				{
+					Chunk->UpdateLODLevel(LODLevel);
+				}
 			});
 	}
 	ChunksQueue.Empty();
@@ -106,10 +118,9 @@ void AInfiniteTerrain::CleanUp()
 	}
 	LoadedChunks.Empty();
 
-	//delete all child actors
+	//delete all child actors, if any remain from previous session
 	TArray<AActor*> ChildActors;
 	GetAttachedActors(ChildActors);
-
 	for (AActor* Actor : ChildActors)
 	{
 		Actor->Destroy();
@@ -121,13 +132,9 @@ void AInfiniteTerrain::GenerateHeightmap(FIntPoint ChunkCoordinates, int32 LODLe
 	LODChunkSize = GetSize(ChunkSize) / FMath::Pow((float)2, LODLevel);
 	LODQuadSize = GetSize(QuadSize) * FMath::Pow((float)2, LODLevel);
 
-	//LODChunkSize = GetSize(ChunkSize);
-	//LODQuadSize = GetSize(QuadSize);
-
 	Heightmap.Init(0.0f, (LODChunkSize + 1) * (LODChunkSize + 1));
 	ApplyModifiers(ChunkCoordinates, LODChunkSize, Heightmap);
 }
-
 
 void AInfiniteTerrain::InitializeTerrain()
 {
@@ -154,7 +161,10 @@ void AInfiniteTerrain::InitializeTerrain()
 		Chunk->GenerateLODsAsync(Coordinates, this, [this, Chunk]()
 			{
 				int32 LODLevel = CalculateChunkLODLevel(Chunk->Coordinates);
-				Chunk->UpdateLODLevel(LODLevel);
+				if (LODLevel != Chunk->GetCurrentLODLevel())
+				{
+					Chunk->UpdateLODLevel(LODLevel);
+				}
 			});
 	}
 	ChunksQueue.Empty();
@@ -197,7 +207,6 @@ void AInfiniteTerrain::UpdateChunks()
 			int32 LODLevel = CalculateChunkLODLevel(Chunk->Coordinates);
 			Chunk->UpdateLODLevel(LODLevel);
 		}
-
 	}
 }
 
@@ -208,8 +217,6 @@ void AInfiniteTerrain::ClearFarChunks()
 	for (auto& Chunk : LoadedChunks)
 	{
 		FIntPoint ChunkCoordinates = Chunk.Key;
-
-		//if chunk is over the cleanup radius, remove it
 		int AbsX = FMath::Abs(ChunkCoordinates.X - LastChunkLocation.X);
 		int AbsY = FMath::Abs(ChunkCoordinates.Y - LastChunkLocation.Y);
 
@@ -233,7 +240,18 @@ void AInfiniteTerrain::ApplyModifiers(FIntPoint ChunkCoordinates, int32 Size, TA
 	for (UTerrainModifier* Modifier : Modifiers)
 	{
 		if (!Modifier) continue;
-		Modifier->ApplyModifier(HeightMap, Size, ChunkWorldPosition);
+
+		for (int Y = 0; Y <= Size; Y++)
+		{
+			for (int X = 0; X <= Size; X++)
+			{
+				int Index = X + Y * (Size + 1);
+
+				int32 Ratio = GetSize(ChunkSize) / Size;
+				FVector2D Location = FVector2D(ChunkWorldPosition.X + X * Ratio, ChunkWorldPosition.Y + Y * Ratio);
+				Modifier->ApplyModifier(HeightMap[Index], Location);
+			}
+		}
 	}
 }
 
@@ -242,27 +260,23 @@ FIntPoint AInfiniteTerrain::GetChunkCoordinates(FVector2D WorldLocation)
 	int32 ChunkX = FMath::RoundToInt(WorldLocation.X / (GetSize(ChunkSize) * GetSize(QuadSize)));
 	int32 ChunkY = FMath::RoundToInt(WorldLocation.Y / (GetSize(ChunkSize) * GetSize(QuadSize)));
 	return FIntPoint(ChunkX, ChunkY);
-
 }
 
 FVector2D AInfiniteTerrain::GetWorldCoordinates(FIntPoint ChunkCoordinates)
 {
-
-
-
 	float X = ChunkCoordinates.X * GetSize(ChunkSize) * GetSize(QuadSize);
 	float Y = ChunkCoordinates.Y * GetSize(ChunkSize) * GetSize(QuadSize);
 	return FVector2D(X, Y);
 }
 
-TArray<FIntPoint> AInfiniteTerrain::GetChunkCoordinatesInRadius(int Radius)
+TArray<FIntPoint> AInfiniteTerrain::GetChunkCoordinatesInRadius(int32 Radius)
 {
 	TArray<FIntPoint> Coordinates;
-	for (int32 y = -Radius; y <= Radius; y++)
+	for (int32 Y = -Radius; Y <= Radius; Y++)
 	{
-		for (int32 x = -Radius; x <= Radius; x++)
+		for (int32 X = -Radius; X <= Radius; X++)
 		{
-			Coordinates.Add(FIntPoint(LastChunkLocation.X + x, LastChunkLocation.Y + y));
+			Coordinates.Add(FIntPoint(LastChunkLocation.X + X, LastChunkLocation.Y + Y));
 		}
 	}
 	return Coordinates;
@@ -281,8 +295,5 @@ int32 AInfiniteTerrain::CalculateChunkLODLevel(FIntPoint ChunkCoordinates)
 			return i;
 		}
 	}
-
 	return LODDistances.Num() - 1;
-
-	
 }
