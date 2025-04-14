@@ -17,5 +17,10 @@ class PROCEDURALALGORITHMS_API UTerrainModifier : public UObject
 	GENERATED_BODY()
 	
 public:	
+	virtual void Initialize() {}
 	virtual void ApplyModifier(float& Height, const FVector2D& Location) const {}
+
+protected:
+	UPROPERTY(EditAnywhere, Category = "Modifier")
+	bool bEnabled = true;
 };

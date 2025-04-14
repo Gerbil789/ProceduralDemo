@@ -11,11 +11,12 @@ class PROCEDURALALGORITHMS_API UCurveModifier : public UTerrainModifier
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "Modifier")
 	UCurveFloat* Curve = nullptr;
 
 	virtual void ApplyModifier(float& Height, const FVector2D& Location) const override
 	{
+		if (!bEnabled) return;
 		if (!Curve) return;
 		Height = Curve->GetFloatValue(Height);
 	}

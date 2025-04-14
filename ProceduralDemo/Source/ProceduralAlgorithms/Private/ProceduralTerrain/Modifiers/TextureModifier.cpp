@@ -4,8 +4,9 @@
 #include "Engine/Texture2D.h"
 #include "Rendering/Texture2DResource.h"
 
-void UTextureModifier::ApplyModifier(float& height, const FVector2D& Location) const
+void UTextureModifier::ApplyModifier(float& Height, const FVector2D& Location) const
 {
+  if (!bEnabled) return;
   UE_LOG(LogTemp, Warning, TEXT("TextureModifier - NOT IMPLEMENTED."));
 
   //if (!Texture)

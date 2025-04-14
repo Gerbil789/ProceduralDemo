@@ -1,17 +1,32 @@
 #include "ProceduralTerrain/Modifiers/NoiseModifier.h"
 
-void UNoiseModifier::ApplyModifier(float& Height, const FVector2D& Location) const
+UNoiseModifier::UNoiseModifier()
 {
-	UFastNoiseWrapper* FastNoise = NewObject<UFastNoiseWrapper>();
+	Initialize();
+}
+
+void UNoiseModifier::Initialize()
+{
+	FastNoise = NewObject<UFastNoiseWrapper>();
 
 	if (!FastNoise)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Failed to create FastNoise object."));
+	}
+	FastNoise->SetupFastNoise(NoiseType, Seed, Frequency, Interpolation, FractalType, Octaves, Lacunarity, Gain, CellularJitter, CellularDistanceFunction, CellularReturnType);
+}
+
+void UNoiseModifier::ApplyModifier(float& Height, const FVector2D& Location) const
+{
+	if (!bEnabled) return;
+
+	if (!FastNoise)
+	{
+		UE_LOG(LogTemp, Error, TEXT("FastNoise is null"));
 		return;
 	}
 
-	FastNoise->SetupFastNoise(NoiseType, Seed, Frequency, Interpolation, FractalType, Octaves, Lacunarity, Gain, CellularJitter, CellularDistanceFunction, CellularReturnType);
-	float NoiseValue = FastNoise->GetNoise2D(Location.X, Location.Y);
+	float NoiseValue = (FastNoise->GetNoise2D(Location.X, Location.Y) + Add) * Scale;
 
 	switch (ModifierType)
 	{

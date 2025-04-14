@@ -12,10 +12,10 @@ class PROCEDURALALGORITHMS_API UTextureModifier : public UTerrainModifier
 	GENERATED_BODY()
 
 public:
-  UPROPERTY(EditAnywhere, BlueprintReadWrite)
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Modifier")
   UTexture2D* Texture;
 
-  UPROPERTY(EditAnywhere)
+  UPROPERTY(EditAnywhere, Category = "Modifier")
   ETerrainModifierType ModifierType = ETerrainModifierType::Additive;
 
 	virtual void ApplyModifier(float& Height, const FVector2D& Location) const override;

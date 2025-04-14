@@ -3,7 +3,7 @@
 UENUM(BlueprintType)
 enum class EMeshStrategy : uint8
 {
-	Default			UMETA(DisplayName = "Default"),
+	Default			UMETA(DisplayName = "None"),
 	QuadTree UMETA(DisplayName = "QuadTrees"),
 	VertexClustering UMETA(DisplayName = "VertexClustering"),
 	QuadraticErrorMetrics UMETA(DisplayName = "QEM")

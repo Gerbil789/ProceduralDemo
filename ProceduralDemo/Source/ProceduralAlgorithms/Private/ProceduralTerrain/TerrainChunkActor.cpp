@@ -5,6 +5,8 @@
 #include "ProceduralTerrain/MeshStrategies/QuadTreeStrategy.h"
 #include "ProceduralTerrain/MeshStrategies/VertexClusteringStrategy.h"
 #include "ProceduralTerrain/MeshStrategies/QuadraticErrorMetricsStrategy.h"
+#include "Profiling/ProfilingMacros.h"
+
 
 ATerrainChunkActor::ATerrainChunkActor()
 {
@@ -13,27 +15,37 @@ ATerrainChunkActor::ATerrainChunkActor()
 	MeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("TerrainMesh"));
 	RootComponent = MeshComponent;
 
-	// Initialize with invalid LOD level
 	CurrentLODLevel = -1;
 }
 
 void ATerrainChunkActor::GenerateLODsAsync(FIntPoint ChunkCoordinates, AInfiniteTerrain* InfiniteTerrain, TFunction<void()> OnComplete)
 {
+	TWeakObjectPtr<ATerrainChunkActor> WeakThis(this);
+	TWeakObjectPtr<AInfiniteTerrain> WeakTerrain(InfiniteTerrain);
+
 	this->Terrain = InfiniteTerrain;
 	this->Coordinates = ChunkCoordinates;
 
-	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [this, OnComplete]()
+	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [WeakThis, WeakTerrain, OnComplete]()
 		{
+			if (!WeakThis.IsValid() || !WeakTerrain.IsValid()) return;
+
+			//TERRAIN_SCOPE_TIME(GenerateLODsAsync);
+
+			ATerrainChunkActor* Chunk = WeakThis.Get();
+			AInfiniteTerrain* Terrain = WeakTerrain.Get();
+
 			for (int32 LOD = 0; LOD < Terrain->LODDistances.Num(); LOD++)
 			{
-				GenerateLODMeshData(LOD);
+				Chunk->GenerateLODMeshData(LOD);
 			}
 
 			// TQueue is thread-safe, we can safely add the chunk to the queue
-			Terrain->ChunksQueue.Enqueue(this);
+			Terrain->ChunksQueue.Enqueue(WeakThis);
 
-			AsyncTask(ENamedThreads::GameThread, [this, OnComplete]()
+			AsyncTask(ENamedThreads::GameThread, [WeakThis, OnComplete]()
 				{
+					if(!WeakThis.IsValid()) return;
 					OnComplete();
 				});
 		});
@@ -42,14 +54,18 @@ void ATerrainChunkActor::GenerateLODsAsync(FIntPoint ChunkCoordinates, AInfinite
 void ATerrainChunkActor::UpdateLODLevel(int32 NewLODLevel)
 {
 	if (NewLODLevel == CurrentLODLevel) return;
+
 	if (!LODMeshData.Contains(NewLODLevel))
 	{
 		UE_LOG(LogTemp, Error, TEXT("LOD level %d not found"), NewLODLevel);
 		return;
 	}
 
+	//TERRAIN_SCOPE_TIME(GenerateLODsAsync);
+
 	// Set new LOD level
-	MeshComponent->CreateMeshSection(0, LODMeshData[NewLODLevel]->Vertices, LODMeshData[NewLODLevel]->Triangles, LODMeshData[NewLODLevel]->Normals, LODMeshData[NewLODLevel]->UVs, TArray<FColor>(), LODMeshData[NewLODLevel]->Tangents, true);
+	bool bCreateCollision = NewLODLevel == 0;
+	MeshComponent->CreateMeshSection(0, LODMeshData[NewLODLevel]->Vertices, LODMeshData[NewLODLevel]->Triangles, LODMeshData[NewLODLevel]->Normals, LODMeshData[NewLODLevel]->UVs, TArray<FColor>(), LODMeshData[NewLODLevel]->Tangents, bCreateCollision);
 	if (Terrain->TerrainMaterial)
 	{
 		MeshComponent->SetMaterial(0, Terrain->TerrainMaterial);
@@ -68,7 +84,7 @@ void ATerrainChunkActor::GenerateLODMeshData(int32 LODLevel)
 	TSharedPtr<FMeshData>	MeshData = MakeShared<FMeshData>();
 
 	// Generate mesh
-	switch (Terrain->MestStrategy)
+	switch (Terrain->MeshReductionStrategy)
 	{
 	case EMeshStrategy::Default:
 		DefaultStrategy::GenerateMesh(Heightmap, LODChunkSize, LODQuadSize, *MeshData);

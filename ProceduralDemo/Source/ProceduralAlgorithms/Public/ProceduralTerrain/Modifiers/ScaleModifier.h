@@ -11,11 +11,12 @@ class PROCEDURALALGORITHMS_API UScaleModifier : public UTerrainModifier
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "Modifier")
 	float Scale = 500.0f;
 
 	virtual void ApplyModifier(float& Height, const FVector2D& Location) const override
 	{
+		if (!bEnabled) return;
 		Height *= Scale;
 	}
 };
