@@ -30,7 +30,7 @@ void ATerrainChunkActor::GenerateLODsAsync(FIntPoint ChunkCoordinates, AInfinite
 		{
 			if (!WeakThis.IsValid() || !WeakTerrain.IsValid()) return;
 
-			//TERRAIN_SCOPE_TIME(GenerateLODsAsync);
+			TERRAIN_SCOPE_TIME(GenerateLODsAsync);
 
 			ATerrainChunkActor* Chunk = WeakThis.Get();
 			AInfiniteTerrain* Terrain = WeakTerrain.Get();
@@ -61,7 +61,7 @@ void ATerrainChunkActor::UpdateLODLevel(int32 NewLODLevel)
 		return;
 	}
 
-	//TERRAIN_SCOPE_TIME(GenerateLODsAsync);
+	TERRAIN_SCOPE_TIME(GenerateLODsAsync);
 
 	// Set new LOD level
 	bool bCreateCollision = NewLODLevel == 0;

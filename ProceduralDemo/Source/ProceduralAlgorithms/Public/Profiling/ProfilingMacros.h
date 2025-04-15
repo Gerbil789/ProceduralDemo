@@ -4,7 +4,7 @@
 #include "ProfilerUtils.h" 
 
 // === Global profiling toggle ===
-#define ENABLE_PROFILING 1
+#define ENABLE_PROFILING 0
 
 
 #define ENABLE_TERRAIN_PROFILING 1

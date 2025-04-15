@@ -102,6 +102,8 @@ private:
 	TArray<FIntPoint> GetChunkCoordinatesInRadius(int32 Radius, bool Sort = false);
 	int32 CalculateChunkLODLevel(const FIntPoint& ChunkCoords);
 
+	//TWeakPtr<ATerrainChunkActor> GetChunk(const FIntPoint& Coord);
+
 private:
 	// Player tracking
 	APawn* PlayerPawn = nullptr;

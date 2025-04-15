@@ -353,3 +353,12 @@ int32 AInfiniteTerrain::CalculateChunkLODLevel(const FIntPoint& ChunkCoords)
 	}
 	return LODDistances.Num() - 1;
 }
+
+//TWeakPtr<ATerrainChunkActor> AInfiniteTerrain::GetChunk(const FIntPoint& Coord)
+//{
+//	if (TSharedPtr<ATerrainChunkActor>* Found = LoadedChunks.Find(Coord))
+//	{
+//		return *Found;
+//	}
+//	return nullptr;
+//}
