@@ -4,11 +4,12 @@
 #include "GameFramework/Actor.h"
 #include "ProceduralTerrain/Enums/TerrainEnums.h"
 #include "ProceduralTerrain/Modifiers/TerrainModifier.h"
+#include "ProceduralMeshComponent.h"
 #include "InfiniteTerrain.generated.h"
 
-class ATerrainChunkActor; // Forward declaration
+class TerrainChunk; // Forward declaration
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTerrainUpdatedDelegate);
+//DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTerrainUpdatedDelegate);
 
 UCLASS()
 class PROCEDURALALGORITHMS_API AInfiniteTerrain : public AActor
@@ -20,8 +21,8 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	// Expose the delegate to Blueprint
-	UPROPERTY(BlueprintAssignable, Category = "Terrain")
-	FOnTerrainUpdatedDelegate OnTerrainUpdated;
+	//UPROPERTY(BlueprintAssignable, Category = "Terrain")
+	//FOnTerrainUpdatedDelegate OnTerrainUpdated;
 
 	UPROPERTY(EditAnywhere, Instanced, Category = "Terrain | Modifiers")
 	TArray<UTerrainModifier*> Modifiers;
@@ -34,7 +35,8 @@ public:
 
 public: // Chunk actors need access to this
 	void GenerateHeightmap(FIntPoint ChunkCoordinates, int32 LODLevel, TArray<float>& Heightmap, int32& LODChunkSize, int32& LODQuadSize);
-	TQueue<TWeakObjectPtr<ATerrainChunkActor>> ChunksQueue;
+	TQueue<TWeakPtr<TerrainChunk>, EQueueMode::Mpsc> ChunksQueue;
+	int32 CalculateLODLevel(const FIntPoint& ChunkCoords);
 
 protected:
 	virtual void BeginPlay() override;
@@ -92,17 +94,19 @@ public:
 
 private:
 	void InitializeTerrain();
+	void InitializeModifiers();
 	void SpawnNewChunks(const TArray<FIntPoint>& ChunkCoordinatesInRenderRadius);
 	void ClearFarChunks();
-	void UpdateChunksLOD(const TArray<FIntPoint>& ChunkCoordinatesInRenderRadius);
+	// Update LOD levels for loaded chunks
+	void UpdateChunks(const TArray<FIntPoint>& ChunkCoordinatesInRenderRadius);
 	void ProcessChunksQueue();
+
+	void CreateMeshComponent(TWeakPtr<TerrainChunk> Chunk);
+	void UpdateMeshComponent(TWeakPtr<TerrainChunk> Chunk);
 	
 	FIntPoint GetChunkCoordinates(const FVector2D& WorldLocation);
 	FVector2D GetWorldCoordinates(const FIntPoint& ChunkCoords);
 	TArray<FIntPoint> GetChunkCoordinatesInRadius(int32 Radius, bool Sort = false);
-	int32 CalculateChunkLODLevel(const FIntPoint& ChunkCoords);
-
-	//TWeakPtr<ATerrainChunkActor> GetChunk(const FIntPoint& Coord);
 
 private:
 	// Player tracking
@@ -110,5 +114,6 @@ private:
 	FIntPoint LastChunkLocation = FIntPoint::ZeroValue;
 
 	// Chunk management
-	TMap<FIntPoint, ATerrainChunkActor*> LoadedChunks;
+	TMap<FIntPoint, TSharedPtr<TerrainChunk>> LoadedChunks;
+	TMap<FIntPoint, UProceduralMeshComponent*> MeshComponents;
 };

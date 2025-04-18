@@ -60,8 +60,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Modifier", meta = (ToolTip = "Scale applied to the final noise output. Affects overall height contribution."))
 	float Scale = 1.0f;
 
-
-
 private:
+	UPROPERTY() // Must be marked as UPROPERTY, otherwise it will be garbage collected at some point and break everything
 	UFastNoiseWrapper* FastNoise = nullptr;
 };

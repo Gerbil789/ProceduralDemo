@@ -26,7 +26,14 @@ void UNoiseModifier::ApplyModifier(float& Height, const FVector2D& Location) con
 		return;
 	}
 
-	float NoiseValue = (FastNoise->GetNoise2D(Location.X, Location.Y) + Add) * Scale;
+	if (!FastNoise->IsInitialized())
+	{
+		UE_LOG(LogTemp, Error, TEXT("FastNoise is not initialized"));
+		return;
+	}
+
+	float NoiseValue = FastNoise->GetNoise2D(Location.X, Location.Y);
+	NoiseValue = (NoiseValue + Add) * Scale;
 
 	switch (ModifierType)
 	{

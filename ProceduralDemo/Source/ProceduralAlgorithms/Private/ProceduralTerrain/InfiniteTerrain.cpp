@@ -1,5 +1,5 @@
 #include "ProceduralTerrain/InfiniteTerrain.h"
-#include "ProceduralTerrain/TerrainChunkActor.h"
+#include "ProceduralTerrain/TerrainChunk.h"
 #include "ProceduralTerrain/Modifiers/NoiseModifier.h"
 #include "Profiling/ProfilingMacros.h"
 #include "Profiling/ProfilerUtils.h"
@@ -21,11 +21,12 @@ AInfiniteTerrain::AInfiniteTerrain()
 
 void AInfiniteTerrain::BeginPlay()
 {
-#if ENABLE_PROFILING // TODO: move this somewhere else
+#if ENABLE_PROFILING // TODO: move profiler initialization somewhere else
 	FProfilerUtils::InitSession(); 
 #endif
 
 	Super::BeginPlay();
+	SetActorTickEnabled(bTerrainEnabled);
 
 	if (!bTerrainEnabled) return;
 
@@ -33,42 +34,37 @@ void AInfiniteTerrain::BeginPlay()
 	ensure(PlayerPawn); // Ensure that the player pawn is valid
   LastChunkLocation = GetChunkCoordinates(FVector2D(PlayerPawn->GetActorLocation()));
 
-	if(bCleanUpOnBeginPlay)
+	if (bCleanUpOnBeginPlay)
 	{
 		CleanUp();
 	}
 
-	//initialize modifiers
-	for (UTerrainModifier* Modifier : Modifiers)
-	{
-		if (Modifier)
-		{
-			Modifier->Initialize();
-		}
-	}
 
+	InitializeModifiers();
 	InitializeTerrain();
 }
 
 void AInfiniteTerrain::Tick(float DeltaTime)
 {
-	//TERRAIN_SCOPE_TIME(Tick);
+	TERRAIN_SCOPE_TIME(Tick);
 	Super::Tick(DeltaTime);
-
-	if (!bTerrainEnabled) return;
 
 	FIntPoint PlayerChunkLocation = GetChunkCoordinates(FVector2D(PlayerPawn->GetActorLocation()));
 
   if (PlayerChunkLocation != LastChunkLocation)
   {
+
 		LastChunkLocation = PlayerChunkLocation;
+		UE_LOG(LogTemp, Warning, TEXT("Player chunk location: %s"), *PlayerChunkLocation.ToString());
 		TArray<FIntPoint> ChunkCoordinatesInRenderRadius = GetChunkCoordinatesInRadius(RenderRadius);
 
 		SpawnNewChunks(ChunkCoordinatesInRenderRadius);
 		ClearFarChunks();
-		UpdateChunksLOD(ChunkCoordinatesInRenderRadius);
+		UpdateChunks(ChunkCoordinatesInRenderRadius);
 		//OnTerrainUpdated.Broadcast();
 	}
+
+
 
 	ProcessChunksQueue();
 }
@@ -81,65 +77,25 @@ void AInfiniteTerrain::Preview()
 		return;
 	}
 
+	InitializeModifiers();
 	CleanUp();
-	TArray<FIntPoint> ChunkCoordinatesInRadius = GetChunkCoordinatesInRadius(PreviewRadius);
-
-	//initialize modifiers
-	for (UTerrainModifier* Modifier : Modifiers)
-	{
-		if (Modifier)
-		{
-			Modifier->Initialize();
-		}
-	}
-
-	for (const FIntPoint& Coordinates : ChunkCoordinatesInRadius)
-	{
-		FTransform SpawnTransform = FTransform(FRotator::ZeroRotator, FVector(GetWorldCoordinates(Coordinates), 0.0f));
-
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.Owner = this;
-		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-
-		ATerrainChunkActor* Chunk = GetWorld()->SpawnActor<ATerrainChunkActor>(ATerrainChunkActor::StaticClass(), SpawnTransform, SpawnParams);
-		if (Chunk == nullptr)
-		{
-			UE_LOG(LogTemp, Error, TEXT("Failed to spawn chunk at %s"), *SpawnTransform.GetLocation().ToString());
-			continue;
-		}
-
-		Chunk->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
-		LoadedChunks.Add(Coordinates, Chunk);
-
-		Chunk->GenerateLODsAsync(Coordinates, this, [this, Chunk]()
-			{
-				int32 LODLevel = CalculateChunkLODLevel(Chunk->Coordinates);
-				if (LODLevel != Chunk->GetCurrentLODLevel())
-				{
-					Chunk->UpdateLODLevel(LODLevel);
-				}
-			});
-	}
-	ChunksQueue.Empty();
+	InitializeTerrain();
 }
 
 void AInfiniteTerrain::CleanUp()
 {
 	UE_LOG(LogTemp, Warning, TEXT("CLEAN UP - Destroying %d chunks"), LoadedChunks.Num());
 
-	for (auto& Chunk : LoadedChunks)
+	for (auto& Mesh : MeshComponents)
 	{
-		Chunk.Value->Destroy();
+		if (Mesh.Value)
+		{
+			Mesh.Value->DestroyComponent();
+		}
 	}
-	LoadedChunks.Empty();
 
-	//delete all child actors, if any remain from previous session
-	TArray<AActor*> ChildActors;
-	GetAttachedActors(ChildActors);
-	for (AActor* Actor : ChildActors)
-	{
-		Actor->Destroy();
-	}
+	MeshComponents.Empty();
+	LoadedChunks.Empty();
 }
 
 void AInfiniteTerrain::GenerateHeightmap(FIntPoint ChunkCoordinates, int32 LODLevel, TArray<float>& Heightmap, int32& LODChunkSize, int32& LODQuadSize)
@@ -168,42 +124,39 @@ void AInfiniteTerrain::GenerateHeightmap(FIntPoint ChunkCoordinates, int32 LODLe
 			}
 		}
 	}
-
-
 }
 
 void AInfiniteTerrain::InitializeTerrain()
 {
+
 	TArray<FIntPoint> ChunkCoordinatesInRenderRadius = GetChunkCoordinatesInRadius(RenderRadius, true);
 
 	for (FIntPoint& Coordinates : ChunkCoordinatesInRenderRadius)
 	{
-		// Create an async task for each chunk
-		FTransform SpawnTransform = FTransform(FRotator::ZeroRotator, FVector(GetWorldCoordinates(Coordinates), 0.0f));
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.Owner = this;
-		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+		if (LoadedChunks.Contains(Coordinates)) continue;
 
-		ATerrainChunkActor* Chunk = GetWorld()->SpawnActor<ATerrainChunkActor>(ATerrainChunkActor::StaticClass(), SpawnTransform, SpawnParams);
-		if (Chunk == nullptr)
-		{
-			UE_LOG(LogTemp, Error, TEXT("Failed to spawn chunk at %s"), *SpawnTransform.GetLocation().ToString());
-			return;
-		}
+		int32 LODLevel = CalculateLODLevel(Coordinates);
+		TSharedPtr<TerrainChunk> Chunk = MakeShared<TerrainChunk>(Coordinates, this, LODLevel);
 
-		Chunk->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
-		LoadedChunks.Add(Coordinates, Chunk);
-
-		Chunk->GenerateLODsAsync(Coordinates, this, [this, Chunk]()
+		int LODCount = LODDistances.Num();
+		Chunk->GenerateMeshDataAsync([this, Chunk]()
 			{
-				int32 LODLevel = CalculateChunkLODLevel(Chunk->Coordinates);
-				if (LODLevel != Chunk->GetCurrentLODLevel())
-				{
-					Chunk->UpdateLODLevel(LODLevel);
-				}
+				UpdateMeshComponent(Chunk);
+				LoadedChunks.Add(Chunk->Coordinates, Chunk);
 			});
 	}
 	ChunksQueue.Empty();
+}
+
+void AInfiniteTerrain::InitializeModifiers()
+{
+	for (UTerrainModifier* Modifier : Modifiers)
+	{
+		if (Modifier)
+		{
+			Modifier->Initialize();
+		}
+	}
 }
 
 void AInfiniteTerrain::ProcessChunksQueue()
@@ -211,19 +164,81 @@ void AInfiniteTerrain::ProcessChunksQueue()
 	int32 Processed = 0;
 	while (!ChunksQueue.IsEmpty() && Processed < SpawnLimit)
 	{
-		TWeakObjectPtr<ATerrainChunkActor> WeakChunk;
-		ChunksQueue.Dequeue(WeakChunk);
-		if (!WeakChunk.IsValid())
+		TWeakPtr<TerrainChunk> Chunk;
+		ChunksQueue.Dequeue(Chunk);
+		if (Chunk.IsValid())
 		{
-			++Processed;
-			continue;
+			//UE_LOG(LogTemp, Warning, TEXT("Update Chunk: %s"), *Chunk.Pin()->Coordinates.ToString());
+			UpdateMeshComponent(Chunk);
 		}
-
-		ATerrainChunkActor* Chunk = WeakChunk.Get();
-		int32 LODLevel = CalculateChunkLODLevel(Chunk->Coordinates);
-		Chunk->UpdateLODLevel(LODLevel);
 		++Processed;
 	}
+
+	//log processed
+
+	//if (Processed > 0)
+	//{
+	//	UE_LOG(LogTemp, Warning, TEXT("Processed %d chunks"), Processed);
+	//}
+}
+
+void AInfiniteTerrain::UpdateMeshComponent(TWeakPtr<TerrainChunk> Chunk)
+{
+	if (Chunk.IsValid() == false) return;
+	TerrainChunk* ChunkPtr = Chunk.Pin().Get();
+
+	if (!MeshComponents.Contains(ChunkPtr->Coordinates))
+	{
+		CreateMeshComponent(Chunk);
+		return;
+	}
+
+	UProceduralMeshComponent* MeshComponent = MeshComponents[ChunkPtr->Coordinates];
+
+	if (MeshComponent == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Mesh component is null for chunk %s"), *ChunkPtr->Coordinates.ToString());
+		return;
+	}
+
+	int32 NumSections = MeshComponent->GetNumSections();
+	int32 LODLevel = ChunkPtr->GetCurrentLODLevel();
+
+	for (int32 i = 0; i < NumSections; ++i)
+	{
+		bool bVisible = (i == LODLevel);
+		MeshComponent->SetMeshSectionVisible(i, bVisible);
+	}
+}
+
+void AInfiniteTerrain::CreateMeshComponent(TWeakPtr<TerrainChunk> Chunk)
+{
+	if (Chunk.IsValid() == false) return;
+	TerrainChunk* ChunkPtr = Chunk.Pin().Get();
+
+	UProceduralMeshComponent* MeshComponent = NewObject<UProceduralMeshComponent>(this);
+	MeshComponent->RegisterComponent();
+	MeshComponent->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+	MeshComponent->SetWorldLocation(FVector(GetWorldCoordinates(ChunkPtr->Coordinates), 0.0f));
+	MeshComponents.Add(ChunkPtr->Coordinates, MeshComponent);
+
+	// Create mesh sections for each LOD level
+	for (int32 LODLevel = 0; LODLevel < LODDistances.Num(); LODLevel++)
+	{
+		if (ChunkPtr->MeshData.Contains(LODLevel))
+		{
+			TSharedPtr<FMeshData> MeshData = ChunkPtr->MeshData[LODLevel];
+			MeshComponent->CreateMeshSection(LODLevel, MeshData->Vertices, MeshData->Triangles, MeshData->Normals, MeshData->UVs, TArray<FColor>(), MeshData->Tangents, true);
+			MeshComponent->SetMeshSectionVisible(LODLevel, false);
+
+			if (TerrainMaterial)
+			{
+				MeshComponent->SetMaterial(LODLevel, TerrainMaterial);
+			}
+		}
+	}
+
+	MeshComponent->SetMeshSectionVisible(ChunkPtr->GetCurrentLODLevel(), true);
 }
 
 void AInfiniteTerrain::SpawnNewChunks(const TArray<FIntPoint>& ChunkCoordinatesInRenderRadius)
@@ -232,22 +247,12 @@ void AInfiniteTerrain::SpawnNewChunks(const TArray<FIntPoint>& ChunkCoordinatesI
 	{
 		if (LoadedChunks.Contains(Coordinates)) continue;
 
-		FTransform SpawnTransform = FTransform(FRotator::ZeroRotator, FVector(GetWorldCoordinates(Coordinates), 0.0f));
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.Owner = this;
-		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-		ATerrainChunkActor* Chunk = GetWorld()->SpawnActor<ATerrainChunkActor>(ATerrainChunkActor::StaticClass(), SpawnTransform, SpawnParams);
-		if (Chunk == nullptr)
-		{
-			UE_LOG(LogTemp, Error, TEXT("Failed to spawn chunk at %s"), *SpawnTransform.GetLocation().ToString());
-			continue;
-		}
-
-		Chunk->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
+		int32 LODLevel = CalculateLODLevel(Coordinates);
+		TSharedPtr<TerrainChunk> Chunk = MakeShared<TerrainChunk>(Coordinates, this, LODLevel);
 		LoadedChunks.Add(Coordinates, Chunk);
 
-		Chunk->GenerateLODsAsync(Coordinates, this);
+		int LODCount = LODDistances.Num();
+		Chunk->GenerateMeshDataAsync();
 	}
 }
 
@@ -269,32 +274,27 @@ void AInfiniteTerrain::ClearFarChunks()
 
 	for (FIntPoint ChunkCoordinates : ChunksToRemove)
 	{
-		LoadedChunks[ChunkCoordinates]->Destroy();
+		if (MeshComponents.Contains(ChunkCoordinates))
+		{
+			UProceduralMeshComponent* MeshComponent = MeshComponents[ChunkCoordinates];
+			if (MeshComponent)
+			{
+				MeshComponent->DestroyComponent();
+			}
+			MeshComponents.Remove(ChunkCoordinates);
+		}
+
 		LoadedChunks.Remove(ChunkCoordinates);
 	}
 }
 
-void AInfiniteTerrain::UpdateChunksLOD(const TArray<FIntPoint>& ChunkCoordinatesInRenderRadius)
+void AInfiniteTerrain::UpdateChunks(const TArray<FIntPoint>& ChunkCoordinatesInRenderRadius)
 {
-	// Update LOD levels for loaded chunks
 	for (const FIntPoint& Coordinates : ChunkCoordinatesInRenderRadius)
 	{
-		if (LoadedChunks.Contains(Coordinates))
-		{
-			TWeakObjectPtr<ATerrainChunkActor> WeakChunk(LoadedChunks[Coordinates]);
-
-			if (!WeakChunk.IsValid())
-			{
-				UE_LOG(LogTemp, Error, TEXT("Weak chunk is invalid for coordinates %s"), *Coordinates.ToString());
-				continue;
-			}
-
-			int32 LODLevel = CalculateChunkLODLevel(WeakChunk->Coordinates);
-			if (LODLevel != WeakChunk->GetCurrentLODLevel())
-			{
-				ChunksQueue.Enqueue(WeakChunk);
-			}
-		}
+		if (!LoadedChunks.Contains(Coordinates)) continue;
+		TSharedPtr<TerrainChunk> Chunk = LoadedChunks[Coordinates];
+		Chunk->UpdateLODLevel();
 	}
 }
 
@@ -338,7 +338,7 @@ TArray<FIntPoint> AInfiniteTerrain::GetChunkCoordinatesInRadius(int32 Radius, bo
 	return Coordinates;
 }
 
-int32 AInfiniteTerrain::CalculateChunkLODLevel(const FIntPoint& ChunkCoords)
+int32 AInfiniteTerrain::CalculateLODLevel(const FIntPoint& ChunkCoords)
 {
 	for (int32 i = 0; i < LODDistances.Num(); i++)
 	{
@@ -354,11 +354,3 @@ int32 AInfiniteTerrain::CalculateChunkLODLevel(const FIntPoint& ChunkCoords)
 	return LODDistances.Num() - 1;
 }
 
-//TWeakPtr<ATerrainChunkActor> AInfiniteTerrain::GetChunk(const FIntPoint& Coord)
-//{
-//	if (TSharedPtr<ATerrainChunkActor>* Found = LoadedChunks.Find(Coord))
-//	{
-//		return *Found;
-//	}
-//	return nullptr;
-//}
