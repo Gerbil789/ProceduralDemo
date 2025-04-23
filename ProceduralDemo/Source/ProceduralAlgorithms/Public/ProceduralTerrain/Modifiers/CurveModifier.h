@@ -14,10 +14,13 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Modifier")
 	UCurveFloat* Curve = nullptr;
 
+	UPROPERTY(EditAnywhere, Category = "Modifier")
+	int32 Scale = 100000;
+
 	virtual void ApplyModifier(float& Height, const FVector2D& Location) const override
 	{
 		if (!bEnabled) return;
 		if (!Curve) return;
-		Height = Curve->GetFloatValue(Height);
+		Height = Curve->GetFloatValue(Height / Scale) * Scale;
 	}
 };

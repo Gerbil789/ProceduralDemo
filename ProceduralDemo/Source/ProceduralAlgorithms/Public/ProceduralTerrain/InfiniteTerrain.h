@@ -19,6 +19,7 @@ class PROCEDURALALGORITHMS_API AInfiniteTerrain : public AActor
 public:	
 	AInfiniteTerrain();
 	virtual void Tick(float DeltaTime) override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	// Expose the delegate to Blueprint
 	//UPROPERTY(BlueprintAssignable, Category = "Terrain")
@@ -91,6 +92,8 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Terrain | Settings | Debug")
 	bool bCleanUpOnBeginPlay = false;
 
+	UPROPERTY(EditAnywhere, Category = "Terrain | Settings | Debug", meta = (ToolTip = "Delay in miliseconds"))
+	float Delay = 0.0f;
 
 private:
 	void InitializeTerrain();

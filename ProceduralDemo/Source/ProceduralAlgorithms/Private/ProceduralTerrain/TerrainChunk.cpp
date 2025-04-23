@@ -11,25 +11,46 @@
 TerrainChunk::TerrainChunk(FIntPoint ChunkCoords, AInfiniteTerrain* InfiniteTerrain, int LODLevel)
 {
 	this->Coordinates = ChunkCoords;
-	this->Terrain = InfiniteTerrain;
+	//this->Terrain = InfiniteTerrain;
+	this->TerrainWeakPtr = InfiniteTerrain;
 	CurrentLODLevel = LODLevel;
+}
+
+TerrainChunk::~TerrainChunk()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Destroying chunk %s"), *Coordinates.ToString());
 }
 
 void TerrainChunk::GenerateMeshDataAsync(TFunction<void()> OnComplete)
 {
-	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [OnComplete, this]()
+	TSharedPtr<TerrainChunk> SharedThis = AsShared();
+
+	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [OnComplete, SharedThis]()
 		{
 			TERRAIN_SCOPE_TIME(GenerateLODsAsync);
+
+
+			if (!SharedThis->TerrainWeakPtr.IsValid()) return;
+			AInfiniteTerrain* Terrain = SharedThis->TerrainWeakPtr.Get();
+
+			//if (!TerrainWeakPtr.IsValid()) return;
+			//AInfiniteTerrain* Terrain = TerrainWeakPtr.Get();
 
 			int32 LODCount = Terrain->LODDistances.Num();
 			for (int32 LOD = 0; LOD < LODCount; LOD++)
 			{
-				this->GenerateLODMeshData(LOD);
+				//this->GenerateLODMeshData(LOD);
+				SharedThis->GenerateLODMeshData(LOD);
 			}
 
-			TWeakPtr<TerrainChunk> WeakThis = AsShared();
+			//if (!TerrainWeakPtr.IsValid()) return; // check again, because generating mesh might take some time
+
+			//TWeakPtr<TerrainChunk> WeakThis = AsShared();
+
+			TWeakPtr<TerrainChunk> WeakThis = SharedThis;
 
 			// TQueue is thread-safe, we can safely add the chunk to the queue
+			if (!SharedThis->TerrainWeakPtr.IsValid()) return;
 			Terrain->ChunksQueue.Enqueue(WeakThis);
 
 			AsyncTask(ENamedThreads::GameThread, [WeakThis, OnComplete]()
@@ -40,12 +61,17 @@ void TerrainChunk::GenerateMeshDataAsync(TFunction<void()> OnComplete)
 		});
 }
 
-void TerrainChunk::UpdateLODLevel()
+void TerrainChunk::UpdateLODLevel(int32 LODLevel)
 {
-	int32 LODLevel = Terrain->CalculateLODLevel(this->Coordinates);
+
+
+	//int32 LODLevel = Terrain->CalculateLODLevel(this->Coordinates);
 	if (LODLevel == CurrentLODLevel) return;
 
 	CurrentLODLevel = LODLevel;
+
+	if (!TerrainWeakPtr.IsValid()) return;
+	AInfiniteTerrain* Terrain = TerrainWeakPtr.Get();
 
 	Terrain->ChunksQueue.Enqueue(AsShared());
 }
@@ -57,6 +83,9 @@ void TerrainChunk::GenerateLODMeshData(int32 LODLevel)
 	TArray<float> Heightmap;
 	int32 LODChunkSize;
 	int32 LODQuadSize;
+
+	if (!TerrainWeakPtr.IsValid()) return;
+	AInfiniteTerrain* Terrain = TerrainWeakPtr.Get();
 
 	Terrain->GenerateHeightmap(this->Coordinates, LODLevel, Heightmap, LODChunkSize, LODQuadSize);
 	TSharedPtr<FMeshData>	LodData = MakeShared<FMeshData>();

@@ -69,6 +69,17 @@ void AInfiniteTerrain::Tick(float DeltaTime)
 	ProcessChunksQueue();
 }
 
+void AInfiniteTerrain::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+
+	UE_LOG(LogTemp, Warning, TEXT("END PLAY - Destroying %d chunks"), LoadedChunks.Num());
+
+	ChunksQueue.Empty();
+	LoadedChunks.Empty();
+	MeshComponents.Empty();
+}
+
 void AInfiniteTerrain::Preview()
 {
 	if (GetWorld() && GetWorld()->IsGameWorld())
@@ -96,6 +107,7 @@ void AInfiniteTerrain::CleanUp()
 
 	MeshComponents.Empty();
 	LoadedChunks.Empty();
+	ChunksQueue.Empty();
 }
 
 void AInfiniteTerrain::GenerateHeightmap(FIntPoint ChunkCoordinates, int32 LODLevel, TArray<float>& Heightmap, int32& LODChunkSize, int32& LODQuadSize)
@@ -123,6 +135,10 @@ void AInfiniteTerrain::GenerateHeightmap(FIntPoint ChunkCoordinates, int32 LODLe
 				Modifier->ApplyModifier(Heightmap[Index], Location);
 			}
 		}
+	}
+
+	if (Delay != 0.0f) {
+		FPlatformProcess::Sleep(Delay / 1000.0f);
 	}
 }
 
@@ -294,7 +310,8 @@ void AInfiniteTerrain::UpdateChunks(const TArray<FIntPoint>& ChunkCoordinatesInR
 	{
 		if (!LoadedChunks.Contains(Coordinates)) continue;
 		TSharedPtr<TerrainChunk> Chunk = LoadedChunks[Coordinates];
-		Chunk->UpdateLODLevel();
+		int32 LODLevel = CalculateLODLevel(Chunk->Coordinates);
+		Chunk->UpdateLODLevel(LODLevel);
 	}
 }
 
