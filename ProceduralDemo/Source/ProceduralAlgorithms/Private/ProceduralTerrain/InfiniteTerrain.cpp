@@ -144,6 +144,12 @@ void AInfiniteTerrain::GenerateHeightmap(FIntPoint ChunkCoordinates, int32 LODLe
 
 void AInfiniteTerrain::InitializeTerrain()
 {
+	if (LODDistances.Num() == 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("LOD distances are not set. Please set them in the editor."));
+		return;
+	}
+
 
 	TArray<FIntPoint> ChunkCoordinatesInRenderRadius = GetChunkCoordinatesInRadius(RenderRadius, true);
 
@@ -218,7 +224,7 @@ void AInfiniteTerrain::UpdateMeshComponent(TWeakPtr<TerrainChunk> Chunk)
 	}
 
 	int32 NumSections = MeshComponent->GetNumSections();
-	int32 LODLevel = ChunkPtr->GetCurrentLODLevel();
+	int32 LODLevel = ChunkPtr->CurrentLODLevel;
 
 	for (int32 i = 0; i < NumSections; ++i)
 	{
@@ -235,7 +241,16 @@ void AInfiniteTerrain::CreateMeshComponent(TWeakPtr<TerrainChunk> Chunk)
 	UProceduralMeshComponent* MeshComponent = NewObject<UProceduralMeshComponent>(this);
 	MeshComponent->RegisterComponent();
 	MeshComponent->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
-	MeshComponent->SetWorldLocation(FVector(GetWorldCoordinates(ChunkPtr->Coordinates), 0.0f));
+	FVector WorldLocation = FVector(GetWorldCoordinates(ChunkPtr->Coordinates), 0.0f);
+	MeshComponent->SetWorldLocation(WorldLocation);
+
+	// Debug
+	if(Offset != 0.0f)
+	{
+		FVector OffsetVector = FVector(ChunkPtr->Coordinates.X * Offset, ChunkPtr->Coordinates.Y * Offset, 0.0f);
+		MeshComponent->SetWorldLocation(WorldLocation + OffsetVector);
+	}
+
 	MeshComponents.Add(ChunkPtr->Coordinates, MeshComponent);
 
 	// Create mesh sections for each LOD level
@@ -254,7 +269,7 @@ void AInfiniteTerrain::CreateMeshComponent(TWeakPtr<TerrainChunk> Chunk)
 		}
 	}
 
-	MeshComponent->SetMeshSectionVisible(ChunkPtr->GetCurrentLODLevel(), true);
+	MeshComponent->SetMeshSectionVisible(ChunkPtr->CurrentLODLevel, true);
 }
 
 void AInfiniteTerrain::SpawnNewChunks(const TArray<FIntPoint>& ChunkCoordinatesInRenderRadius)
@@ -311,7 +326,7 @@ void AInfiniteTerrain::UpdateChunks(const TArray<FIntPoint>& ChunkCoordinatesInR
 		if (!LoadedChunks.Contains(Coordinates)) continue;
 		TSharedPtr<TerrainChunk> Chunk = LoadedChunks[Coordinates];
 		int32 LODLevel = CalculateLODLevel(Chunk->Coordinates);
-		Chunk->UpdateLODLevel(LODLevel);
+		Chunk->UpdateChunk(LODLevel);
 	}
 }
 

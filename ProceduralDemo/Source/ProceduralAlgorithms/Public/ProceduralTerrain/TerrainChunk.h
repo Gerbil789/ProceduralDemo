@@ -15,17 +15,17 @@ public:
 	void GenerateMeshDataAsync(TFunction<void()> OnComplete = []() {});
 
 	// Update the LOD level of the chunk, if it has changed, and add the chunk to the queue
-	void UpdateLODLevel(int32 LODLevel);
-	int32 GetCurrentLODLevel() const { return CurrentLODLevel; }
+	void UpdateChunk(int32 LODLevel);
+
 
 	FIntPoint Coordinates;
-
+	int32 CurrentLODLevel;
 	TMap<int, TSharedPtr<FMeshData>> MeshData;
 
 private:	
-	//AInfiniteTerrain* Terrain;
 	TWeakObjectPtr<AInfiniteTerrain> TerrainWeakPtr;
-	int32 CurrentLODLevel;
-
 	void GenerateLODMeshData(int32 LODLevel);
+
+
+	TArray<TWeakPtr<TerrainChunk>> Neighbors;
 };

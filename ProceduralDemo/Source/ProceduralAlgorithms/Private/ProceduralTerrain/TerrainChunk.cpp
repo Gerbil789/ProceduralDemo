@@ -11,7 +11,6 @@
 TerrainChunk::TerrainChunk(FIntPoint ChunkCoords, AInfiniteTerrain* InfiniteTerrain, int LODLevel)
 {
 	this->Coordinates = ChunkCoords;
-	//this->Terrain = InfiniteTerrain;
 	this->TerrainWeakPtr = InfiniteTerrain;
 	CurrentLODLevel = LODLevel;
 }
@@ -33,24 +32,17 @@ void TerrainChunk::GenerateMeshDataAsync(TFunction<void()> OnComplete)
 			if (!SharedThis->TerrainWeakPtr.IsValid()) return;
 			AInfiniteTerrain* Terrain = SharedThis->TerrainWeakPtr.Get();
 
-			//if (!TerrainWeakPtr.IsValid()) return;
-			//AInfiniteTerrain* Terrain = TerrainWeakPtr.Get();
 
 			int32 LODCount = Terrain->LODDistances.Num();
 			for (int32 LOD = 0; LOD < LODCount; LOD++)
 			{
-				//this->GenerateLODMeshData(LOD);
 				SharedThis->GenerateLODMeshData(LOD);
 			}
 
-			//if (!TerrainWeakPtr.IsValid()) return; // check again, because generating mesh might take some time
-
-			//TWeakPtr<TerrainChunk> WeakThis = AsShared();
-
 			TWeakPtr<TerrainChunk> WeakThis = SharedThis;
+			if (!SharedThis->TerrainWeakPtr.IsValid()) return;
 
 			// TQueue is thread-safe, we can safely add the chunk to the queue
-			if (!SharedThis->TerrainWeakPtr.IsValid()) return;
 			Terrain->ChunksQueue.Enqueue(WeakThis);
 
 			AsyncTask(ENamedThreads::GameThread, [WeakThis, OnComplete]()
@@ -61,19 +53,13 @@ void TerrainChunk::GenerateMeshDataAsync(TFunction<void()> OnComplete)
 		});
 }
 
-void TerrainChunk::UpdateLODLevel(int32 LODLevel)
+
+
+void TerrainChunk::UpdateChunk(int32 LODLevel)
 {
-
-
-	//int32 LODLevel = Terrain->CalculateLODLevel(this->Coordinates);
-	if (LODLevel == CurrentLODLevel) return;
-
 	CurrentLODLevel = LODLevel;
-
 	if (!TerrainWeakPtr.IsValid()) return;
-	AInfiniteTerrain* Terrain = TerrainWeakPtr.Get();
-
-	Terrain->ChunksQueue.Enqueue(AsShared());
+	TerrainWeakPtr.Get()->ChunksQueue.Enqueue(AsShared());
 }
 
 
@@ -94,7 +80,7 @@ void TerrainChunk::GenerateLODMeshData(int32 LODLevel)
 	switch (Terrain->MeshReductionStrategy)
 	{
 	case EMeshStrategy::Default:
-		DefaultStrategy::GenerateMesh(Heightmap, LODChunkSize, LODQuadSize, *LodData);
+		DefaultStrategy::GenerateMesh(Heightmap, LODChunkSize, LODQuadSize, *LodData, Terrain->bUseSkirt, Terrain->SkirtDepth);
 		break;
 
 	case EMeshStrategy::QuadTree:
@@ -111,7 +97,7 @@ void TerrainChunk::GenerateLODMeshData(int32 LODLevel)
 
 	default:
 		UE_LOG(LogTemp, Warning, TEXT("Invalid mesh optimization strategy -> using default"));
-		DefaultStrategy::GenerateMesh(Heightmap, LODChunkSize, LODQuadSize, *LodData);
+		DefaultStrategy::GenerateMesh(Heightmap, LODChunkSize, LODQuadSize, *LodData, Terrain->bUseSkirt, Terrain->SkirtDepth);
 		break;
 	}
 

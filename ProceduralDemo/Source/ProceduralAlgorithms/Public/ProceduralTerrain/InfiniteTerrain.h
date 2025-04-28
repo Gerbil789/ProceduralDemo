@@ -9,8 +9,6 @@
 
 class TerrainChunk; // Forward declaration
 
-//DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTerrainUpdatedDelegate);
-
 UCLASS()
 class PROCEDURALALGORITHMS_API AInfiniteTerrain : public AActor
 {
@@ -20,10 +18,6 @@ public:
 	AInfiniteTerrain();
 	virtual void Tick(float DeltaTime) override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-
-	// Expose the delegate to Blueprint
-	//UPROPERTY(BlueprintAssignable, Category = "Terrain")
-	//FOnTerrainUpdatedDelegate OnTerrainUpdated;
 
 	UPROPERTY(EditAnywhere, Instanced, Category = "Terrain | Modifiers")
 	TArray<UTerrainModifier*> Modifiers;
@@ -38,6 +32,7 @@ public: // Chunk actors need access to this
 	void GenerateHeightmap(FIntPoint ChunkCoordinates, int32 LODLevel, TArray<float>& Heightmap, int32& LODChunkSize, int32& LODQuadSize);
 	TQueue<TWeakPtr<TerrainChunk>, EQueueMode::Mpsc> ChunksQueue;
 	int32 CalculateLODLevel(const FIntPoint& ChunkCoords);
+	TMap<FIntPoint, TSharedPtr<TerrainChunk>> LoadedChunks;
 
 protected:
 	virtual void BeginPlay() override;
@@ -55,11 +50,17 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Terrain | Settings | Core")
 	int32 CleanupRadius = 32;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Terrain | Settings | Core", meta = (ToolTip = "Number of quads in a chunk"))
+	UPROPERTY(EditAnywhere, Category = "Terrain | Settings | Core", meta = (ToolTip = "Number of quads in a chunk"))
 	ETerrainChunkSize ChunkSize = ETerrainChunkSize::Size_16;
 
 	UPROPERTY(EditAnywhere, Category = "Terrain | Settings | Core", meta = (ToolTip = "Size of the quads in the chunk"))
 	ETerrainQuadSize QuadSize = ETerrainQuadSize::Size_512;
+
+	UPROPERTY(EditAnywhere, Category = "Terrain | Settings | Core", meta = (ToolTip = "Generate extra mesh on the edges of the chunks"))
+	bool bUseSkirt = true;
+
+	UPROPERTY(EditAnywhere, Category = "Terrain | Settings | Core", meta = (EditCondition = "bUseSkirt == true"))
+	float SkirtDepth = 500.0f;
 
 	// === PERFORMANCE SETTINGS ===
 
@@ -95,12 +96,14 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Terrain | Settings | Debug", meta = (ToolTip = "Delay in miliseconds"))
 	float Delay = 0.0f;
 
+	UPROPERTY(EditAnywhere, Category = "Terrain | Settings | Debug", meta = (ToolTip = "Space between the chunks"))
+	float Offset = 0.0f;
+
 private:
 	void InitializeTerrain();
 	void InitializeModifiers();
 	void SpawnNewChunks(const TArray<FIntPoint>& ChunkCoordinatesInRenderRadius);
 	void ClearFarChunks();
-	// Update LOD levels for loaded chunks
 	void UpdateChunks(const TArray<FIntPoint>& ChunkCoordinatesInRenderRadius);
 	void ProcessChunksQueue();
 
@@ -112,11 +115,10 @@ private:
 	TArray<FIntPoint> GetChunkCoordinatesInRadius(int32 Radius, bool Sort = false);
 
 private:
+	TMap<FIntPoint, UProceduralMeshComponent*> MeshComponents;
+
 	// Player tracking
 	APawn* PlayerPawn = nullptr;
 	FIntPoint LastChunkLocation = FIntPoint::ZeroValue;
 
-	// Chunk management
-	TMap<FIntPoint, TSharedPtr<TerrainChunk>> LoadedChunks;
-	TMap<FIntPoint, UProceduralMeshComponent*> MeshComponents;
 };
