@@ -26,6 +26,5 @@ private:
 	TWeakObjectPtr<AInfiniteTerrain> TerrainWeakPtr;
 	void GenerateLODMeshData(int32 LODLevel);
 
-
 	TArray<TWeakPtr<TerrainChunk>> Neighbors;
 };

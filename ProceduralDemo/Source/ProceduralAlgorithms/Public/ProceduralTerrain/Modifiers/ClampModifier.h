@@ -15,7 +15,7 @@ public:
 	float MinHeight = 0.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Modifier")
-	float MaxHeight = 1000.0f;
+	float MaxHeight = 10000.0f;
 
 	virtual void ApplyModifier(float& Height, const FVector2D& Location) const override
 	{

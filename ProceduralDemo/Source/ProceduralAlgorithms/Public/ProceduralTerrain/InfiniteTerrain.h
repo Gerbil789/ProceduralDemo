@@ -28,7 +28,7 @@ public:
 	UFUNCTION(CallInEditor, Category = "Terrain functions", meta = (ToolTip = "Delete all terrain"))
 	void CleanUp();
 
-public: // Chunk actors need access to this
+public: // Chunks need access to this
 	void GenerateHeightmap(FIntPoint ChunkCoordinates, int32 LODLevel, TArray<float>& Heightmap, int32& LODChunkSize, int32& LODQuadSize);
 	TQueue<TWeakPtr<TerrainChunk>, EQueueMode::Mpsc> ChunksQueue;
 	int32 CalculateLODLevel(const FIntPoint& ChunkCoords);
@@ -36,7 +36,6 @@ public: // Chunk actors need access to this
 
 protected:
 	virtual void BeginPlay() override;
-
 
 public:
 	// === CORE SETTINGS ===

@@ -54,14 +54,12 @@ void TerrainChunk::GenerateMeshDataAsync(TFunction<void()> OnComplete)
 }
 
 
-
 void TerrainChunk::UpdateChunk(int32 LODLevel)
 {
 	CurrentLODLevel = LODLevel;
 	if (!TerrainWeakPtr.IsValid()) return;
 	TerrainWeakPtr.Get()->ChunksQueue.Enqueue(AsShared());
 }
-
 
 
 void TerrainChunk::GenerateLODMeshData(int32 LODLevel)
@@ -87,13 +85,13 @@ void TerrainChunk::GenerateLODMeshData(int32 LODLevel)
 		QuadTreeStrategy::GenerateMesh(Heightmap, LODChunkSize, LODQuadSize, Terrain->HeightThreshold, *LodData);
 		break;
 
-	case EMeshStrategy::VertexClustering:
-		VertexClusteringStrategy::GenerateMesh(Heightmap, LODChunkSize, LODQuadSize, Terrain->DecimationFactor, *LodData);
-		break;
+	//case EMeshStrategy::VertexClustering:
+	//	VertexClusteringStrategy::GenerateMesh(Heightmap, LODChunkSize, LODQuadSize, Terrain->DecimationFactor, *LodData);
+	//	break;
 
-	case EMeshStrategy::QuadraticErrorMetrics:
-		QuadraticErrorMetricsStrategy::GenerateMesh(Heightmap, LODChunkSize, LODQuadSize, Terrain->QEMDecimationThreshold, *LodData);
-		break;
+	//case EMeshStrategy::QuadraticErrorMetrics:
+	//	QuadraticErrorMetricsStrategy::GenerateMesh(Heightmap, LODChunkSize, LODQuadSize, Terrain->QEMDecimationThreshold, *LodData);
+	//	break;
 
 	default:
 		UE_LOG(LogTemp, Warning, TEXT("Invalid mesh optimization strategy -> using default"));

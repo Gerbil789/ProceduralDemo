@@ -64,6 +64,8 @@ void AWFC_ModulePreviewActor::Initialize(const FWFC_Module Block, UStaticMesh* W
 		return;
 	}
 
+	MeshComponent->SetStaticMesh(Block.StaticMesh);
+
 	TextComponents[0]->SetText(FText::FromString(Block.SocketFront.ToString()));
 	TextComponents[1]->SetText(FText::FromString(Block.SocketBack.ToString()));
 	TextComponents[2]->SetText(FText::FromString(Block.SocketRight.ToString()));

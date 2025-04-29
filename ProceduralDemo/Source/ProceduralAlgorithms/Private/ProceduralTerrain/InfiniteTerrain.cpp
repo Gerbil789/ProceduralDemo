@@ -14,7 +14,6 @@ AInfiniteTerrain::AInfiniteTerrain()
 	LODDistances.Add(8);
 	LODDistances.Add(10);
 	LODDistances.Add(12);
-
 	UNoiseModifier* NoiseModifier = NewObject<UNoiseModifier>();
 	Modifiers.Add(NoiseModifier);
 }
@@ -39,7 +38,6 @@ void AInfiniteTerrain::BeginPlay()
 		CleanUp();
 	}
 
-
 	InitializeModifiers();
 	InitializeTerrain();
 }
@@ -61,7 +59,6 @@ void AInfiniteTerrain::Tick(float DeltaTime)
 		SpawnNewChunks(ChunkCoordinatesInRenderRadius);
 		ClearFarChunks();
 		UpdateChunks(ChunkCoordinatesInRenderRadius);
-		//OnTerrainUpdated.Broadcast();
 	}
 
 
@@ -174,10 +171,12 @@ void AInfiniteTerrain::InitializeModifiers()
 {
 	for (UTerrainModifier* Modifier : Modifiers)
 	{
-		if (Modifier)
+		if (!Modifier)
 		{
-			Modifier->Initialize();
+			UE_LOG(LogTemp, Error, TEXT("Modifier is null"));
+			continue;
 		}
+		Modifier->Initialize();
 	}
 }
 
@@ -190,18 +189,10 @@ void AInfiniteTerrain::ProcessChunksQueue()
 		ChunksQueue.Dequeue(Chunk);
 		if (Chunk.IsValid())
 		{
-			//UE_LOG(LogTemp, Warning, TEXT("Update Chunk: %s"), *Chunk.Pin()->Coordinates.ToString());
 			UpdateMeshComponent(Chunk);
 		}
 		++Processed;
 	}
-
-	//log processed
-
-	//if (Processed > 0)
-	//{
-	//	UE_LOG(LogTemp, Warning, TEXT("Processed %d chunks"), Processed);
-	//}
 }
 
 void AInfiniteTerrain::UpdateMeshComponent(TWeakPtr<TerrainChunk> Chunk)
